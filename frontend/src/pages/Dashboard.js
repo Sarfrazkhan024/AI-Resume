@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import { Plus, FileText, Copy, Trash, DownloadSimple, PencilSimple, Briefcase, Crown } from "@phosphor-icons/react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -202,6 +202,7 @@ export default function Dashboard() {
         <DialogContent className="border-2 border-[#09090B] shadow-[8px_8px_0px_0px_rgba(9,9,11,1)] rounded-xl max-w-md" data-testid="new-resume-modal">
           <DialogHeader>
             <DialogTitle className="font-['Outfit'] font-bold text-xl">Create New Resume</DialogTitle>
+            <DialogDescription className="text-sm text-[#52525B]">Enter the job role you're targeting to get started</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
