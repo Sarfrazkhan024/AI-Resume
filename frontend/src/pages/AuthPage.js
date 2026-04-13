@@ -67,6 +67,26 @@ export default function AuthPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Google Login - REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH */}
+            <button
+              type="button"
+              onClick={() => {
+                const redirectUrl = window.location.origin + '/dashboard';
+                window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+              }}
+              className="neo-btn w-full px-6 py-3 bg-[#FFFFFF] text-[#09090B] border-2 border-[#09090B] rounded-full font-bold shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] flex items-center justify-center gap-3"
+              data-testid="google-login-btn"
+            >
+              <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-5 h-5" />
+              Continue with Google
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-[#E4E4E7]" />
+              <span className="text-xs font-bold text-[#A1A1AA] uppercase">or</span>
+              <div className="flex-1 h-px bg-[#E4E4E7]" />
+            </div>
+
             {isRegister && (
               <div>
                 <label className="text-sm font-bold text-[#09090B] mb-1 block">Full Name</label>

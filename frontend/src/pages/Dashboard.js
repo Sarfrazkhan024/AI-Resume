@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
-import { Plus, FileText, Copy, Trash, DownloadSimple, PencilSimple, Briefcase, Crown } from "@phosphor-icons/react";
+import { Plus, FileText, Copy, Trash, DownloadSimple, PencilSimple, Briefcase, Crown, ShareNetwork, ChartBar } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
 import { toast } from "sonner";
 
@@ -94,6 +94,32 @@ export default function Dashboard() {
     }
   };
 
+  const handleShare = async (id) => {
+    try {
+      const { data } = await axios.post(`${API}/resumes/${id}/share`, {}, { withCredentials: true });
+      const shareUrl = `${window.location.origin}/share/${data.share_id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Share link copied to clipboard!");
+    } catch {
+      toast.error("Failed to generate share link");
+    }
+  };
+
+  const handleScore = async (id) => {
+    toast.info("Analyzing resume with AI...");
+    try {
+      const { data } = await axios.post(`${API}/resumes/${id}/score`, {}, { withCredentials: true });
+      const score = data.score || 0;
+      const suggestions = data.suggestions || [];
+      toast.success(`ATS Score: ${score}/100`, {
+        description: suggestions.length > 0 ? suggestions[0] : "Looking good!",
+        duration: 8000
+      });
+    } catch {
+      toast.error("Failed to score resume");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FAFAFA]" data-testid="dashboard-page">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -160,9 +186,15 @@ export default function Dashboard() {
                     {resume.personal_info?.name && `${resume.personal_info.name} - `}
                     {resume.job_role}{resume.company ? ` at ${resume.company}` : ""}
                   </p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button onClick={() => navigate(`/builder/${resume.id}`, { state: { resumeId: resume.id } })} className="neo-btn flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-[#FDE047] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid={`edit-resume-${i}`}>
                       <PencilSimple size={14} weight="bold" /> Edit
+                    </button>
+                    <button onClick={() => handleScore(resume.id)} className="neo-btn p-2 bg-[#FDE047] border-2 border-[#09090B] rounded-lg shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" title="ATS Score" data-testid={`score-resume-${i}`}>
+                      <ChartBar size={14} weight="bold" />
+                    </button>
+                    <button onClick={() => handleShare(resume.id)} className="neo-btn p-2 bg-[#FFFFFF] border-2 border-[#09090B] rounded-lg shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" title="Share" data-testid={`share-resume-${i}`}>
+                      <ShareNetwork size={14} weight="bold" />
                     </button>
                     <button onClick={() => handleDownload(resume.id, resume.personal_info?.name)} className="neo-btn p-2 bg-[#A7F3D0] border-2 border-[#09090B] rounded-lg shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" title="Download PDF" data-testid={`download-resume-${i}`}>
                       <DownloadSimple size={14} weight="bold" />

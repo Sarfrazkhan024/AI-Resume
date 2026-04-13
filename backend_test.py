@@ -275,6 +275,93 @@ class ResumeAITester:
             self.log(f"❌ PDF Download - Error: {str(e)}", "ERROR")
             return False, {}
 
+    def test_share_resume(self):
+        """Test sharing a resume (NEW FEATURE)"""
+        if not self.test_resume_id:
+            self.log("❌ No resume ID available for share test", "SKIP")
+            return False, {}
+        
+        success, response, _ = self.run_test(
+            "Share Resume",
+            "POST",
+            f"/resumes/{self.test_resume_id}/share",
+            200
+        )
+        
+        if success:
+            share_id = response.get("share_id")
+            if share_id:
+                self.log(f"✅ Generated share_id: {share_id}")
+                # Test public access to shared resume
+                return self.test_public_resume(share_id)
+            else:
+                self.log("❌ No share_id in response", "FAIL")
+                return False, {}
+        return success, response
+
+    def test_public_resume(self, share_id):
+        """Test accessing public shared resume (NEW FEATURE)"""
+        return self.run_test(
+            "Get Public Resume",
+            "GET",
+            f"/public/resume/{share_id}",
+            200
+        )
+
+    def test_score_resume(self):
+        """Test ATS resume scoring (NEW FEATURE)"""
+        if not self.test_resume_id:
+            self.log("❌ No resume ID available for score test", "SKIP")
+            return False, {}
+        
+        success, response, _ = self.run_test(
+            "Score Resume (ATS)",
+            "POST",
+            f"/resumes/{self.test_resume_id}/score",
+            200
+        )
+        
+        if success:
+            # Validate score response structure
+            score = response.get("score")
+            sections = response.get("sections", {})
+            suggestions = response.get("suggestions", [])
+            keywords_missing = response.get("keywords_missing", [])
+            
+            if isinstance(score, int) and 0 <= score <= 100:
+                self.log(f"✅ Valid ATS score: {score}/100")
+            else:
+                self.log(f"⚠️  Invalid score format: {score}", "WARN")
+            
+            if isinstance(sections, dict):
+                self.log(f"✅ Score sections: {list(sections.keys())}")
+            else:
+                self.log("⚠️  Invalid sections format", "WARN")
+                
+            if isinstance(suggestions, list):
+                self.log(f"✅ Suggestions count: {len(suggestions)}")
+            else:
+                self.log("⚠️  Invalid suggestions format", "WARN")
+        
+        return success, response
+
+    def test_google_oauth_endpoint(self):
+        """Test Google OAuth session endpoint (NEW FEATURE)"""
+        # Note: We can't test the full OAuth flow, but we can test the endpoint exists
+        # and handles invalid session_id properly
+        success, response, _ = self.run_test(
+            "Google OAuth Session (Invalid)",
+            "POST",
+            "/auth/google/session",
+            401,  # Should fail with invalid session_id
+            data={"session_id": "invalid_session_id"}
+        )
+        
+        if success:
+            self.log("✅ Google OAuth endpoint exists and handles invalid session correctly")
+        
+        return success, response
+
     def test_delete_resume(self):
         """Test deleting a resume (run last)"""
         if not self.test_resume_id:
@@ -310,6 +397,11 @@ class ResumeAITester:
             self.test_get_resume,
             self.test_update_resume,
             self.test_duplicate_resume,
+            # NEW FEATURES TESTING
+            self.test_share_resume,
+            self.test_score_resume,
+            self.test_google_oauth_endpoint,
+            # EXISTING FEATURES
             self.test_get_payment_plans,
             self.test_create_payment_order,
             self.test_verify_payment,

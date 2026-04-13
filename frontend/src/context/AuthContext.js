@@ -19,7 +19,16 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  useEffect(() => { checkAuth(); }, [checkAuth]);
+  useEffect(() => {
+    // CRITICAL: If returning from OAuth callback, skip the /me check.
+    // AuthCallback will exchange the session_id and establish the session first.
+    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+    if (window.location.hash?.includes('session_id=')) {
+      setLoading(false);
+      return;
+    }
+    checkAuth();
+  }, [checkAuth]);
 
   const login = async (email, password) => {
     const { data } = await axios.post(`${API}/auth/login`, { email, password }, { withCredentials: true });
@@ -45,8 +54,14 @@ export function AuthProvider({ children }) {
     } catch {}
   };
 
+  const loginWithGoogle = async (sessionId) => {
+    const { data } = await axios.post(`${API}/auth/google/session`, { session_id: sessionId }, { withCredentials: true });
+    setUser(data);
+    return data;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, loginWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

@@ -3,8 +3,9 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import ChatInterface from "../components/ChatInterface";
 import ResumePreview from "../components/ResumePreview";
-import { Eye, ChatCircle, DownloadSimple, Palette, ArrowLeft } from "@phosphor-icons/react";
+import { Eye, ChatCircle, DownloadSimple, Palette, ArrowLeft, ShareNetwork, ChartBar } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const TEMPLATES = ["modern", "classic", "minimal"];
@@ -20,6 +21,9 @@ export default function ResumeBuilder() {
   const [mobileView, setMobileView] = useState("chat"); // "chat" or "preview"
   const [template, setTemplate] = useState("modern");
   const [showTemplates, setShowTemplates] = useState(false);
+  const [scoreData, setScoreData] = useState(null);
+  const [showScore, setShowScore] = useState(false);
+  const [scoring, setScoring] = useState(false);
 
   // If navigated from dashboard with resumeId (existing resume), find session
   const resumeId = location.state?.resumeId;
@@ -97,6 +101,33 @@ export default function ResumeBuilder() {
     }
   };
 
+  const handleShare = async () => {
+    if (!resume?.id) return;
+    try {
+      const { data } = await axios.post(`${API}/resumes/${resume.id}/share`, {}, { withCredentials: true });
+      const shareUrl = `${window.location.origin}/share/${data.share_id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Share link copied to clipboard!");
+    } catch {
+      toast.error("Failed to generate share link");
+    }
+  };
+
+  const handleScore = async () => {
+    if (!resume?.id) return;
+    setScoring(true);
+    setShowScore(true);
+    try {
+      const { data } = await axios.post(`${API}/resumes/${resume.id}/score`, {}, { withCredentials: true });
+      setScoreData(data);
+    } catch {
+      toast.error("Failed to score resume");
+      setShowScore(false);
+    } finally {
+      setScoring(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]">
@@ -137,9 +168,17 @@ export default function ResumeBuilder() {
           </div>
 
           {resume?.status === "complete" && (
-            <button onClick={handleDownload} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#A7F3D0] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="download-pdf-btn">
-              <DownloadSimple size={14} weight="bold" /> PDF
-            </button>
+            <>
+              <button onClick={handleScore} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#FDE047] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="ats-score-btn">
+                <ChartBar size={14} weight="bold" /> Score
+              </button>
+              <button onClick={handleShare} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#FFFFFF] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="share-resume-btn">
+                <ShareNetwork size={14} weight="bold" /> Share
+              </button>
+              <button onClick={handleDownload} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#A7F3D0] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="download-pdf-btn">
+                <DownloadSimple size={14} weight="bold" /> PDF
+              </button>
+            </>
           )}
 
           {/* Mobile toggle */}
@@ -185,6 +224,79 @@ export default function ResumeBuilder() {
           </div>
         </div>
       </div>
+
+      {/* ATS Score Modal */}
+      <Dialog open={showScore} onOpenChange={setShowScore}>
+        <DialogContent className="border-2 border-[#09090B] shadow-[8px_8px_0px_0px_rgba(9,9,11,1)] rounded-xl max-w-lg max-h-[80vh] overflow-y-auto" data-testid="ats-score-modal">
+          <DialogHeader>
+            <DialogTitle className="font-['Outfit'] font-bold text-xl">ATS Resume Score</DialogTitle>
+            <DialogDescription className="text-sm text-[#52525B]">AI-powered analysis of your resume's ATS compatibility</DialogDescription>
+          </DialogHeader>
+          {scoring ? (
+            <div className="py-8 flex flex-col items-center gap-4">
+              <div className="flex gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#FDE047] animate-bounce" style={{ animationDelay: "0s" }} />
+                <div className="w-3 h-3 rounded-full bg-[#A7F3D0] animate-bounce" style={{ animationDelay: "0.15s" }} />
+                <div className="w-3 h-3 rounded-full bg-[#C4B5FD] animate-bounce" style={{ animationDelay: "0.3s" }} />
+              </div>
+              <p className="text-sm font-medium text-[#52525B]">AI is analyzing your resume...</p>
+            </div>
+          ) : scoreData ? (
+            <div className="space-y-4 pt-2">
+              {/* Overall Score */}
+              <div className="text-center">
+                <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full border-4 ${
+                  scoreData.score >= 80 ? "border-[#86EFAC] bg-[#86EFAC]/20" : scoreData.score >= 60 ? "border-[#FDE047] bg-[#FDE047]/20" : "border-[#FDA4AF] bg-[#FDA4AF]/20"
+                }`} data-testid="ats-overall-score">
+                  <span className="font-['Outfit'] font-black text-3xl text-[#09090B]">{scoreData.score}</span>
+                </div>
+                <p className="text-sm font-bold text-[#52525B] mt-2">out of 100</p>
+              </div>
+
+              {/* Section Scores */}
+              {scoreData.sections && Object.entries(scoreData.sections).map(([key, val]) => (
+                <div key={key} className="bg-[#FAFAFA] border-2 border-[#E4E4E7] rounded-xl p-3" data-testid={`score-section-${key}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-bold text-[#09090B] capitalize">{key}</span>
+                    <span className={`text-sm font-bold ${val.score >= 80 ? "text-green-600" : val.score >= 60 ? "text-yellow-600" : "text-red-500"}`}>{val.score}/100</span>
+                  </div>
+                  <div className="w-full h-2 bg-[#E4E4E7] rounded-full overflow-hidden mb-2">
+                    <div className={`h-full rounded-full ${val.score >= 80 ? "bg-[#86EFAC]" : val.score >= 60 ? "bg-[#FDE047]" : "bg-[#FDA4AF]"}`} style={{ width: `${val.score}%` }} />
+                  </div>
+                  {val.feedback && <p className="text-xs text-[#52525B]">{val.feedback}</p>}
+                </div>
+              ))}
+
+              {/* Suggestions */}
+              {scoreData.suggestions?.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-bold text-[#09090B] mb-2">Suggestions</h4>
+                  <ul className="space-y-1">
+                    {scoreData.suggestions.map((s, i) => (
+                      <li key={i} className="text-xs text-[#52525B] flex gap-2">
+                        <span className="text-[#FDE047] font-bold flex-shrink-0">-</span>
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Missing Keywords */}
+              {scoreData.keywords_missing?.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-bold text-[#09090B] mb-2">Missing Keywords</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {scoreData.keywords_missing.map((kw, i) => (
+                      <span key={i} className="text-xs px-2 py-0.5 bg-[#FDA4AF]/20 border border-[#FDA4AF] rounded-full text-[#09090B] font-medium">{kw}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

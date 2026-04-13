@@ -14,6 +14,8 @@ import bcrypt
 import jwt as pyjwt
 import json
 import io
+import requests as http_requests
+import secrets
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -253,6 +255,63 @@ async def refresh(request: Request, response: Response):
     except pyjwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")
 
+# ==================== GOOGLE OAUTH (Emergent Auth) ====================
+
+class GoogleSessionRequest(BaseModel):
+    session_id: str
+
+@auth_router.post("/google/session")
+async def google_session(req: GoogleSessionRequest, response: Response):
+    """Exchange Emergent Auth session_id for user data and issue JWT"""
+    try:
+        resp = http_requests.get(
+            "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+            headers={"X-Session-ID": req.session_id},
+            timeout=10
+        )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid Google session")
+        google_data = resp.json()
+    except http_requests.RequestException:
+        raise HTTPException(status_code=502, detail="Failed to verify Google session")
+
+    email = google_data.get("email", "").lower().strip()
+    name = google_data.get("name", "")
+    picture = google_data.get("picture", "")
+    if not email:
+        raise HTTPException(status_code=400, detail="No email from Google")
+
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        # Update Google info on existing user
+        await db.users.update_one({"email": email}, {"$set": {
+            "name": name or existing.get("name", ""),
+            "picture": picture,
+            "google_linked": True,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }})
+        user_id = existing["id"]
+        plan = existing.get("plan", "free")
+        role = existing.get("role", "user")
+    else:
+        # Create new user from Google data
+        user_id = str(uuid.uuid4())
+        await db.users.insert_one({
+            "id": user_id, "name": name, "email": email,
+            "password_hash": "", "picture": picture,
+            "google_linked": True,
+            "plan": "free", "role": "user",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        plan = "free"
+        role = "user"
+
+    access_token = create_access_token(user_id, email)
+    refresh_token = create_refresh_token(user_id)
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=7200, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+    return {"id": user_id, "name": name, "email": email, "plan": plan, "role": role, "picture": picture}
+
 # ==================== RESUME ROUTES ====================
 
 resume_router = APIRouter(prefix="/api/resumes", tags=["resumes"])
@@ -307,6 +366,102 @@ async def duplicate_resume(resume_id: str, request: Request):
     await db.resumes.insert_one(new_resume)
     new_resume.pop("_id", None)
     return new_resume
+
+# ==================== SHARE ROUTES ====================
+
+@resume_router.post("/{resume_id}/share")
+async def share_resume(resume_id: str, request: Request):
+    user = await get_current_user(request)
+    resume = await db.resumes.find_one({"id": resume_id, "user_id": user["id"]}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    share_id = resume.get("share_id")
+    if not share_id:
+        share_id = secrets.token_urlsafe(12)
+        await db.resumes.update_one({"id": resume_id}, {"$set": {"share_id": share_id, "updated_at": datetime.now(timezone.utc).isoformat()}})
+    return {"share_id": share_id}
+
+# ==================== ATS SCORING ====================
+
+@resume_router.post("/{resume_id}/score")
+async def score_resume(resume_id: str, request: Request):
+    user = await get_current_user(request)
+    resume = await db.resumes.find_one({"id": resume_id, "user_id": user["id"]}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    llm_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not llm_key:
+        raise HTTPException(status_code=500, detail="AI scoring unavailable")
+    try:
+        resume_text = _build_resume_text(resume)
+        chat = LlmChat(
+            api_key=llm_key,
+            session_id=f"score-{uuid.uuid4()}",
+            system_message="""You are an expert ATS (Applicant Tracking System) resume analyst. Score the resume and provide actionable feedback.
+Return ONLY valid JSON in this exact format:
+{"score": 75, "sections": {"formatting": {"score": 80, "feedback": "..."}, "keywords": {"score": 70, "feedback": "..."}, "experience": {"score": 75, "feedback": "..."}, "skills": {"score": 80, "feedback": "..."}, "education": {"score": 70, "feedback": "..."}}, "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"], "keywords_missing": ["keyword1", "keyword2"]}"""
+        )
+        chat.with_model("openai", "gpt-4o")
+        msg = f"Score this resume for a {resume.get('job_role', 'general')} position{' at ' + resume.get('company') if resume.get('company') else ''}:\n\n{resume_text}"
+        response = await chat.send_message(UserMessage(text=msg))
+        score_data = _parse_json(response, None)
+        if not score_data or not isinstance(score_data, dict):
+            score_data = {"score": 70, "sections": {}, "suggestions": ["Could not fully analyze. Try completing all sections."], "keywords_missing": []}
+        # Store score
+        await db.resumes.update_one({"id": resume_id}, {"$set": {"ats_score": score_data, "updated_at": datetime.now(timezone.utc).isoformat()}})
+        return score_data
+    except Exception as e:
+        logger.error(f"ATS scoring error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to score resume")
+
+def _build_resume_text(resume: dict) -> str:
+    parts = []
+    pi = resume.get("personal_info", {})
+    if pi.get("name"): parts.append(f"Name: {pi['name']}")
+    if pi.get("email"): parts.append(f"Email: {pi['email']}")
+    if pi.get("phone"): parts.append(f"Phone: {pi['phone']}")
+    if pi.get("location"): parts.append(f"Location: {pi['location']}")
+    if resume.get("summary"): parts.append(f"\nSummary: {resume['summary']}")
+    edu = resume.get("education", [])
+    if edu:
+        parts.append("\nEducation:")
+        if isinstance(edu, list):
+            for e in edu:
+                if isinstance(e, dict):
+                    parts.append(f"  {e.get('degree','')} - {e.get('institution','')} ({e.get('year','')})")
+                else:
+                    parts.append(f"  {e}")
+        else:
+            parts.append(f"  {edu}")
+    skills = resume.get("skills", [])
+    if skills:
+        parts.append(f"\nSkills: {', '.join(str(s) for s in skills) if isinstance(skills, list) else str(skills)}")
+    exp = resume.get("experience", [])
+    if exp:
+        parts.append("\nExperience:")
+        if isinstance(exp, list):
+            for e in exp:
+                if isinstance(e, dict):
+                    parts.append(f"  {e.get('title','')} at {e.get('company','')} ({e.get('duration','')}): {e.get('description','')}")
+                else:
+                    parts.append(f"  {e}")
+        else:
+            parts.append(f"  {exp}")
+    proj = resume.get("projects", [])
+    if proj:
+        parts.append("\nProjects:")
+        if isinstance(proj, list):
+            for p in proj:
+                if isinstance(p, dict):
+                    parts.append(f"  {p.get('name','')} ({p.get('tech','')}): {p.get('description','')}")
+                else:
+                    parts.append(f"  {p}")
+        else:
+            parts.append(f"  {proj}")
+    ach = resume.get("achievements", [])
+    if ach:
+        parts.append(f"\nAchievements: {', '.join(str(a) for a in ach) if isinstance(ach, list) else str(ach)}")
+    return "\n".join(parts)
 
 # ==================== CHAT ROUTES ====================
 
@@ -494,6 +649,15 @@ async def download_pdf(resume_id: str, request: Request):
         headers={"Content-Disposition": f"attachment; filename={name}_resume.pdf"}
     )
 
+# ==================== PUBLIC ROUTES (No Auth) ====================
+
+@app.get("/api/public/resume/{share_id}")
+async def get_public_resume(share_id: str):
+    resume = await db.resumes.find_one({"share_id": share_id}, {"_id": 0, "user_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    return resume
+
 # ==================== INCLUDE ROUTERS ====================
 
 app.include_router(auth_router)
@@ -522,6 +686,7 @@ async def startup():
     await db.chat_sessions.create_index("id", unique=True)
     await db.chat_sessions.create_index("resume_id")
     await db.payments.create_index("order_id")
+    await db.resumes.create_index("share_id", sparse=True)
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@resumeai.com")
     admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
     existing = await db.users.find_one({"email": admin_email})
