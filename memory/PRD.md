@@ -34,6 +34,12 @@ Build a modern, mobile-first web platform called "ResumeAI" that helps users cre
 - [x] Score/Share/Download buttons on builder toolbar and dashboard cards
 - [x] Public resume page at /share/:shareId
 
+### Phase 3 (April 13, 2026)
+- [x] Cover Letter Generator (GPT-4o powered, personalized to job role + company)
+- [x] Cover letter preview with Resume/Cover Letter tab toggle
+- [x] Cover letter PDF download
+- [x] Toolbar integration with dynamic button (Generate → Toggle → Download)
+
 ## Prioritized Backlog
 
 ### P1 (Important)
