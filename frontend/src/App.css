@@ -1,34 +1,84 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Neo-Brutalist button animations */
+.neo-btn {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.neo-btn:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px rgba(9,9,11,1) !important;
+}
+.neo-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0px 0px 0px 0px rgba(9,9,11,1) !important;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Chat animations */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes pulse-dot {
+  0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
+  30% { opacity: 1; transform: scale(1); }
+}
+.animate-slide-up {
+  animation: slideUp 0.4s ease forwards;
+}
+.animate-fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+.animate-scale-in {
+  animation: scaleIn 0.3s ease forwards;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+/* Staggered entrance */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* Resume preview styles */
+.resume-paper {
+  font-family: 'Inter', sans-serif;
+  aspect-ratio: 1 / 1.414;
+  background: white;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
 }
 
-.App-link {
-    color: #61dafb;
+/* Chat typing indicator */
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #09090B;
+  display: inline-block;
+  margin: 0 2px;
+}
+.typing-dot:nth-child(1) { animation: pulse-dot 1.4s infinite; animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation: pulse-dot 1.4s infinite; animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation: pulse-dot 1.4s infinite; animation-delay: 0.4s; }
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #FDE047 0%, #A7F3D0 50%, #C4B5FD 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+/* Mobile bottom sheet */
+.bottom-sheet-enter {
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+.bottom-sheet-enter-active {
+  transform: translateY(0);
 }
