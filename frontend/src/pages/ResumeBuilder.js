@@ -167,7 +167,7 @@ export default function ResumeBuilder() {
             )}
           </div>
 
-          {resume?.status === "complete" && (
+          {resume && (
             <>
               <button onClick={handleScore} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#FDE047] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="ats-score-btn">
                 <ChartBar size={14} weight="bold" /> Score
