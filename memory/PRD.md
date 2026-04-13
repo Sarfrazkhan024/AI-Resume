@@ -40,6 +40,16 @@ Build a modern, mobile-first web platform called "ResumeAI" that helps users cre
 - [x] Cover letter PDF download
 - [x] Toolbar integration with dynamic button (Generate → Toggle → Download)
 
+### Phase 4 (April 13, 2026)
+- [x] Expanded to 8 premium templates (Modern, Classic, Minimal, Executive, Creative, Tech, Elegant, Bold)
+- [x] Each template with distinct header colors, skill chip styles, section title accents
+- [x] Inline section editing after resume completion (left panel switches from chat to editor)
+- [x] Collapsible section cards for all 8 resume sections
+- [x] Tag-style editing for skills, achievements, hobbies
+- [x] Array item add/remove for education, experience, projects
+- [x] Dirty state detection with Save button
+- [x] Real-time preview updates after saving edits
+
 ## Prioritized Backlog
 
 ### P1 (Important)
