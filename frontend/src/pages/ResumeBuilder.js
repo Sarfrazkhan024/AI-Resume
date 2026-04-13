@@ -3,12 +3,13 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import ChatInterface from "../components/ChatInterface";
 import ResumePreview from "../components/ResumePreview";
-import { Eye, ChatCircle, DownloadSimple, Palette, ArrowLeft, ShareNetwork, ChartBar, Envelope, SpinnerGap, FileText } from "@phosphor-icons/react";
+import SectionEditor from "../components/SectionEditor";
+import { Eye, ChatCircle, DownloadSimple, Palette, ArrowLeft, ShareNetwork, ChartBar, Envelope, SpinnerGap, FileText, PencilSimple } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const TEMPLATES = ["modern", "classic", "minimal"];
+const TEMPLATES = ["modern", "classic", "minimal", "executive", "creative", "tech", "elegant", "bold"];
 
 export default function ResumeBuilder() {
   const { sessionId } = useParams();
@@ -27,6 +28,7 @@ export default function ResumeBuilder() {
   const [previewTab, setPreviewTab] = useState("resume"); // "resume" or "cover_letter"
   const [coverLetter, setCoverLetter] = useState("");
   const [generatingCL, setGeneratingCL] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // If navigated from dashboard with resumeId (existing resume), find session
   const resumeId = location.state?.resumeId;
@@ -169,6 +171,29 @@ export default function ResumeBuilder() {
     }
   }, [resume]);
 
+  const handleSaveEdits = async (editedData) => {
+    if (!resume?.id) return;
+    setSavingEdit(true);
+    try {
+      const { data } = await axios.put(`${API}/resumes/${resume.id}`, {
+        personal_info: editedData.personal_info,
+        summary: editedData.summary,
+        education: editedData.education,
+        skills: editedData.skills,
+        experience: editedData.experience,
+        projects: editedData.projects,
+        achievements: editedData.achievements,
+        hobbies: editedData.hobbies,
+      }, { withCredentials: true });
+      setResume(data);
+      toast.success("Resume updated!");
+    } catch {
+      toast.error("Failed to save changes");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]">
@@ -234,7 +259,7 @@ export default function ResumeBuilder() {
           {/* Mobile toggle */}
           <div className="flex md:hidden border-2 border-[#09090B] rounded-lg overflow-hidden shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]">
             <button onClick={() => setMobileView("chat")} className={`p-2 ${mobileView === "chat" ? "bg-[#FDE047]" : "bg-[#FFFFFF]"}`} data-testid="mobile-chat-toggle">
-              <ChatCircle size={16} weight="bold" />
+              {session && !session.completed ? <ChatCircle size={16} weight="bold" /> : <PencilSimple size={16} weight="bold" />}
             </button>
             <button onClick={() => { setMobileView("preview"); setPreviewTab("resume"); }} className={`p-2 ${mobileView === "preview" && previewTab === "resume" ? "bg-[#FDE047]" : "bg-[#FFFFFF]"}`} data-testid="mobile-preview-toggle">
               <Eye size={16} weight="bold" />
@@ -245,9 +270,9 @@ export default function ResumeBuilder() {
 
       {/* Main content - Split screen */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Chat panel */}
+        {/* Chat / Edit panel */}
         <div className={`${mobileView === "chat" ? "flex" : "hidden"} md:flex flex-col w-full md:w-1/2 lg:w-[45%] border-r-0 md:border-r-2 border-[#09090B] bg-[#FAFAFA]`}>
-          {session ? (
+          {session && !session.completed ? (
             <ChatInterface
               messages={session.messages || []}
               onSendMessage={handleSendMessage}
@@ -255,11 +280,16 @@ export default function ResumeBuilder() {
               completed={session.completed}
               loading={sending}
             />
+          ) : resume ? (
+            <SectionEditor
+              resume={resume}
+              onSave={handleSaveEdits}
+              saving={savingEdit}
+            />
           ) : (
             <div className="flex-1 flex items-center justify-center p-8 text-center">
               <div>
-                <p className="font-bold text-lg text-[#09090B]">Resume loaded in preview mode</p>
-                <p className="text-sm text-[#52525B] mt-2">This resume was already completed. View it on the right.</p>
+                <p className="font-bold text-lg text-[#09090B]">Loading resume...</p>
               </div>
             </div>
           )}

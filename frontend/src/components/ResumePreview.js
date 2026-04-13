@@ -2,22 +2,44 @@ import { MapPin, Envelope, Phone, GraduationCap, Briefcase, Lightbulb, Trophy, G
 
 const TEMPLATES = {
   modern: {
-    headerBg: "bg-[#1a1a2e]",
-    headerText: "text-white",
-    accentColor: "border-[#FDE047]",
+    headerBg: "bg-[#1a1a2e]", headerText: "text-white",
     sectionTitle: "text-[#1a1a2e] border-b-2 border-[#1a1a2e]",
+    skillChip: "bg-[#F5F3FF] border-[#C4B5FD] text-[#1a1a2e]",
   },
   classic: {
-    headerBg: "bg-[#FFFFFF]",
-    headerText: "text-[#09090B]",
-    accentColor: "border-[#09090B]",
+    headerBg: "bg-[#FFFFFF] border-b-2 border-[#09090B]", headerText: "text-[#09090B]",
     sectionTitle: "text-[#09090B] border-b border-[#09090B]",
+    skillChip: "bg-[#F4F4F5] border-[#D4D4D8] text-[#09090B]",
   },
   minimal: {
-    headerBg: "bg-[#FAFAFA]",
-    headerText: "text-[#09090B]",
-    accentColor: "border-[#A7F3D0]",
-    sectionTitle: "text-[#52525B] uppercase tracking-widest text-xs",
+    headerBg: "bg-[#FAFAFA]", headerText: "text-[#09090B]",
+    sectionTitle: "text-[#71717A] uppercase tracking-widest text-[9px]",
+    skillChip: "bg-transparent border-[#D4D4D8] text-[#52525B]",
+  },
+  executive: {
+    headerBg: "bg-[#0f172a]", headerText: "text-white",
+    sectionTitle: "text-[#0f172a] border-b-2 border-[#d97706]",
+    skillChip: "bg-[#fffbeb] border-[#d97706] text-[#78350f]",
+  },
+  creative: {
+    headerBg: "bg-gradient-to-r from-[#7c3aed] to-[#db2777]", headerText: "text-white",
+    sectionTitle: "text-[#7c3aed] border-b-2 border-[#db2777]",
+    skillChip: "bg-[#fdf4ff] border-[#d946ef] text-[#7c3aed]",
+  },
+  tech: {
+    headerBg: "bg-[#022c22]", headerText: "text-[#4ade80]",
+    sectionTitle: "text-[#022c22] border-b-2 border-[#16a34a]",
+    skillChip: "bg-[#f0fdf4] border-[#16a34a] text-[#022c22]",
+  },
+  elegant: {
+    headerBg: "bg-[#44403c]", headerText: "text-[#fef3c7]",
+    sectionTitle: "text-[#44403c] border-b border-[#c2956a]",
+    skillChip: "bg-[#fefce8] border-[#c2956a] text-[#44403c]",
+  },
+  bold: {
+    headerBg: "bg-[#09090B]", headerText: "text-white",
+    sectionTitle: "text-[#09090B] border-b-4 border-[#dc2626]",
+    skillChip: "bg-[#fef2f2] border-[#dc2626] text-[#09090B]",
   },
 };
 
@@ -65,7 +87,6 @@ export default function ResumePreview({ resume, template = "modern" }) {
       </div>
 
       <div className="px-6 py-4 space-y-3">
-        {/* Summary */}
         {resume.summary && (
           <div>
             <SectionTitle icon={Star} title="Professional Summary" template={template} />
@@ -73,7 +94,6 @@ export default function ResumePreview({ resume, template = "modern" }) {
           </div>
         )}
 
-        {/* Education */}
         {resume.education && resume.education.length > 0 && (
           <div>
             <SectionTitle icon={GraduationCap} title="Education" template={template} />
@@ -93,13 +113,12 @@ export default function ResumePreview({ resume, template = "modern" }) {
           </div>
         )}
 
-        {/* Skills */}
         {resume.skills && resume.skills.length > 0 && (
           <div>
             <SectionTitle icon={Lightbulb} title="Skills" template={template} />
             <div className="flex flex-wrap gap-1">
               {Array.isArray(resume.skills) ? resume.skills.map((skill, i) => (
-                <span key={i} className={`text-[9px] px-2 py-0.5 rounded-full border ${template === "modern" ? "bg-[#F5F3FF] border-[#C4B5FD] text-[#1a1a2e]" : "bg-[#F4F4F5] border-[#E4E4E7] text-[#09090B]"}`}>
+                <span key={i} className={`text-[9px] px-2 py-0.5 rounded-full border ${t.skillChip}`}>
                   {String(skill)}
                 </span>
               )) : <p className="text-[10px]">{String(resume.skills)}</p>}
@@ -107,7 +126,6 @@ export default function ResumePreview({ resume, template = "modern" }) {
           </div>
         )}
 
-        {/* Experience */}
         {resume.experience && resume.experience.length > 0 && (
           <div>
             <SectionTitle icon={Briefcase} title="Experience" template={template} />
@@ -127,7 +145,6 @@ export default function ResumePreview({ resume, template = "modern" }) {
           </div>
         )}
 
-        {/* Projects */}
         {resume.projects && resume.projects.length > 0 && (
           <div>
             <SectionTitle icon={Lightbulb} title="Projects" template={template} />
@@ -144,7 +161,6 @@ export default function ResumePreview({ resume, template = "modern" }) {
           </div>
         )}
 
-        {/* Achievements */}
         {resume.achievements && resume.achievements.length > 0 && (
           <div>
             <SectionTitle icon={Trophy} title="Achievements" template={template} />
@@ -154,7 +170,6 @@ export default function ResumePreview({ resume, template = "modern" }) {
           </div>
         )}
 
-        {/* Hobbies */}
         {resume.hobbies && resume.hobbies.length > 0 && (
           <div>
             <SectionTitle icon={GameController} title="Interests" template={template} />
