@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import ChatInterface from "../components/ChatInterface";
 import ResumePreview from "../components/ResumePreview";
-import { Eye, ChatCircle, DownloadSimple, Palette, ArrowLeft, ShareNetwork, ChartBar } from "@phosphor-icons/react";
+import { Eye, ChatCircle, DownloadSimple, Palette, ArrowLeft, ShareNetwork, ChartBar, Envelope, SpinnerGap, FileText } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
 
@@ -24,6 +24,9 @@ export default function ResumeBuilder() {
   const [scoreData, setScoreData] = useState(null);
   const [showScore, setShowScore] = useState(false);
   const [scoring, setScoring] = useState(false);
+  const [previewTab, setPreviewTab] = useState("resume"); // "resume" or "cover_letter"
+  const [coverLetter, setCoverLetter] = useState("");
+  const [generatingCL, setGeneratingCL] = useState(false);
 
   // If navigated from dashboard with resumeId (existing resume), find session
   const resumeId = location.state?.resumeId;
@@ -128,6 +131,44 @@ export default function ResumeBuilder() {
     }
   };
 
+  const handleGenerateCoverLetter = async () => {
+    if (!resume?.id) return;
+    setGeneratingCL(true);
+    try {
+      const { data } = await axios.post(`${API}/resumes/${resume.id}/cover-letter`, {}, { withCredentials: true });
+      setCoverLetter(data.cover_letter);
+      setPreviewTab("cover_letter");
+      toast.success("Cover letter generated!");
+    } catch {
+      toast.error("Failed to generate cover letter");
+    } finally {
+      setGeneratingCL(false);
+    }
+  };
+
+  const handleDownloadCoverLetter = async () => {
+    if (!resume?.id) return;
+    try {
+      const response = await axios.get(`${API}/resumes/${resume.id}/download-cover-letter-pdf`, { withCredentials: true, responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${resume.personal_info?.name || "cover_letter"}_cover_letter.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success("Cover letter PDF downloaded!");
+    } catch {
+      toast.error("No cover letter to download. Generate one first.");
+    }
+  };
+
+  // Fetch existing cover letter when resume loads
+  useEffect(() => {
+    if (resume?.id && resume?.cover_letter) {
+      setCoverLetter(resume.cover_letter);
+    }
+  }, [resume]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]">
@@ -172,11 +213,20 @@ export default function ResumeBuilder() {
               <button onClick={handleScore} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#FDE047] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="ats-score-btn">
                 <ChartBar size={14} weight="bold" /> Score
               </button>
+              <button
+                onClick={coverLetter ? () => setPreviewTab(previewTab === "cover_letter" ? "resume" : "cover_letter") : handleGenerateCoverLetter}
+                disabled={generatingCL}
+                className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#C4B5FD] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] disabled:opacity-50"
+                data-testid="cover-letter-btn"
+              >
+                {generatingCL ? <SpinnerGap size={14} weight="bold" className="animate-spin" /> : <Envelope size={14} weight="bold" />}
+                {generatingCL ? "Generating..." : coverLetter ? (previewTab === "cover_letter" ? "Resume" : "Cover Letter") : "Cover Letter"}
+              </button>
               <button onClick={handleShare} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#FFFFFF] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="share-resume-btn">
                 <ShareNetwork size={14} weight="bold" /> Share
               </button>
-              <button onClick={handleDownload} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#A7F3D0] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="download-pdf-btn">
-                <DownloadSimple size={14} weight="bold" /> PDF
+              <button onClick={previewTab === "cover_letter" ? handleDownloadCoverLetter : handleDownload} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#A7F3D0] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="download-pdf-btn">
+                <DownloadSimple size={14} weight="bold" /> {previewTab === "cover_letter" ? "CL PDF" : "PDF"}
               </button>
             </>
           )}
@@ -186,7 +236,7 @@ export default function ResumeBuilder() {
             <button onClick={() => setMobileView("chat")} className={`p-2 ${mobileView === "chat" ? "bg-[#FDE047]" : "bg-[#FFFFFF]"}`} data-testid="mobile-chat-toggle">
               <ChatCircle size={16} weight="bold" />
             </button>
-            <button onClick={() => setMobileView("preview")} className={`p-2 ${mobileView === "preview" ? "bg-[#FDE047]" : "bg-[#FFFFFF]"}`} data-testid="mobile-preview-toggle">
+            <button onClick={() => { setMobileView("preview"); setPreviewTab("resume"); }} className={`p-2 ${mobileView === "preview" && previewTab === "resume" ? "bg-[#FDE047]" : "bg-[#FFFFFF]"}`} data-testid="mobile-preview-toggle">
               <Eye size={16} weight="bold" />
             </button>
           </div>
@@ -217,9 +267,66 @@ export default function ResumeBuilder() {
 
         {/* Preview panel */}
         <div className={`${mobileView === "preview" ? "flex" : "hidden"} md:flex flex-col w-full md:w-1/2 lg:w-[55%] bg-[#E4E4E7]/30 overflow-y-auto`}>
+          {/* Preview tab toggle */}
+          {coverLetter && (
+            <div className="flex items-center gap-1 px-4 pt-3" data-testid="preview-tabs">
+              <button
+                onClick={() => setPreviewTab("resume")}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold border-2 border-[#09090B] transition-all ${previewTab === "resume" ? "bg-[#FDE047] shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" : "bg-[#FFFFFF]"}`}
+                data-testid="preview-tab-resume"
+              >
+                <FileText size={12} weight="bold" className="inline mr-1" />Resume
+              </button>
+              <button
+                onClick={() => setPreviewTab("cover_letter")}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold border-2 border-[#09090B] transition-all ${previewTab === "cover_letter" ? "bg-[#C4B5FD] shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" : "bg-[#FFFFFF]"}`}
+                data-testid="preview-tab-cover-letter"
+              >
+                <Envelope size={12} weight="bold" className="inline mr-1" />Cover Letter
+              </button>
+            </div>
+          )}
+
           <div className="p-4 lg:p-8 flex-1 flex items-start justify-center">
             <div className="w-full max-w-[600px]">
-              <ResumePreview resume={resume} template={template} />
+              {previewTab === "cover_letter" && coverLetter ? (
+                <div className="resume-paper border border-gray-200 rounded-sm overflow-hidden" data-testid="cover-letter-preview" style={{ fontSize: "12px", lineHeight: "1.7" }}>
+                  <div className="bg-[#1a1a2e] px-6 py-4">
+                    <h1 className="font-bold text-lg text-white tracking-tight">{resume?.personal_info?.name || "Your Name"}</h1>
+                    <div className="flex flex-wrap gap-3 mt-1 text-[10px] text-white/80">
+                      {resume?.personal_info?.email && <span>{resume.personal_info.email}</span>}
+                      {resume?.personal_info?.phone && <span>{resume.personal_info.phone}</span>}
+                      {resume?.personal_info?.location && <span>{resume.personal_info.location}</span>}
+                    </div>
+                  </div>
+                  <div className="px-6 py-5 space-y-3">
+                    {coverLetter.split("\n").filter(l => l.trim()).map((para, i) => (
+                      <p key={i} className="text-[11px] leading-relaxed text-[#333]">{para}</p>
+                    ))}
+                  </div>
+                </div>
+              ) : previewTab === "cover_letter" && !coverLetter ? (
+                <div className="resume-paper border border-gray-200 rounded-sm flex items-center justify-center" data-testid="cover-letter-empty">
+                  <div className="text-center px-8">
+                    <div className="w-16 h-16 bg-[#C4B5FD] border-2 border-[#09090B] rounded-xl mx-auto mb-4 flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(9,9,11,1)]">
+                      <Envelope size={28} weight="bold" />
+                    </div>
+                    <p className="font-['Outfit'] font-bold text-lg text-[#09090B]">No cover letter yet</p>
+                    <p className="text-sm text-[#52525B] mt-1 mb-4">Click the button above to generate one with AI</p>
+                    <button
+                      onClick={handleGenerateCoverLetter}
+                      disabled={generatingCL}
+                      className="neo-btn inline-flex items-center gap-2 px-5 py-2.5 bg-[#C4B5FD] text-[#09090B] border-2 border-[#09090B] rounded-full font-bold text-sm shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] disabled:opacity-50"
+                      data-testid="generate-cover-letter-btn"
+                    >
+                      {generatingCL ? <SpinnerGap size={16} weight="bold" className="animate-spin" /> : <Envelope size={16} weight="bold" />}
+                      {generatingCL ? "Generating..." : "Generate Cover Letter"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <ResumePreview resume={resume} template={template} />
+              )}
             </div>
           </div>
         </div>

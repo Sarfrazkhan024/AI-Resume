@@ -362,6 +362,134 @@ class ResumeAITester:
         
         return success, response
 
+    def test_generate_cover_letter(self):
+        """Test generating a cover letter (NEW COVER LETTER FEATURE)"""
+        if not self.test_resume_id:
+            self.log("❌ No resume ID available for cover letter generation test", "SKIP")
+            return False, {}
+        
+        success, response, _ = self.run_test(
+            "Generate Cover Letter",
+            "POST",
+            f"/resumes/{self.test_resume_id}/cover-letter",
+            200
+        )
+        
+        if success:
+            cover_letter = response.get("cover_letter", "")
+            if cover_letter and len(cover_letter) > 100:  # Should be substantial content
+                self.log(f"✅ Generated cover letter: {len(cover_letter)} characters")
+                # Check for professional cover letter elements
+                if "Dear" in cover_letter and "Sincerely" in cover_letter:
+                    self.log("✅ Cover letter has proper greeting and closing")
+                else:
+                    self.log("⚠️  Cover letter may be missing proper format", "WARN")
+            else:
+                self.log(f"⚠️  Cover letter seems too short: {len(cover_letter)} chars", "WARN")
+        
+        return success, response
+
+    def test_get_cover_letter(self):
+        """Test retrieving existing cover letter (NEW COVER LETTER FEATURE)"""
+        if not self.test_resume_id:
+            self.log("❌ No resume ID available for get cover letter test", "SKIP")
+            return False, {}
+        
+        success, response, _ = self.run_test(
+            "Get Cover Letter",
+            "GET",
+            f"/resumes/{self.test_resume_id}/cover-letter",
+            200
+        )
+        
+        if success:
+            cover_letter = response.get("cover_letter", "")
+            if cover_letter:
+                self.log(f"✅ Retrieved cover letter: {len(cover_letter)} characters")
+            else:
+                self.log("✅ No cover letter found (expected if not generated yet)")
+        
+        return success, response
+
+    def test_get_existing_cover_letter(self):
+        """Test retrieving cover letter from existing resume with cover letter"""
+        # Use the existing resume ID that already has a cover letter
+        existing_resume_id = "3acf31e3-c6fb-4efd-a476-a6abe2368fa9"
+        
+        success, response, _ = self.run_test(
+            "Get Existing Cover Letter",
+            "GET",
+            f"/resumes/{existing_resume_id}/cover-letter",
+            200
+        )
+        
+        if success:
+            cover_letter = response.get("cover_letter", "")
+            if cover_letter and len(cover_letter) > 100:
+                self.log(f"✅ Retrieved existing cover letter: {len(cover_letter)} characters")
+            else:
+                self.log("⚠️  Existing cover letter not found or too short", "WARN")
+        
+        return success, response
+
+    def test_download_cover_letter_pdf(self):
+        """Test downloading cover letter as PDF (NEW COVER LETTER FEATURE)"""
+        if not self.test_resume_id:
+            self.log("❌ No resume ID available for cover letter PDF download test", "SKIP")
+            return False, {}
+        
+        # Note: This endpoint returns binary data, so we expect different handling
+        url = f"{self.base_url}/resumes/{self.test_resume_id}/download-cover-letter-pdf"
+        self.tests_run += 1
+        self.log("Testing Cover Letter PDF Download...")
+        
+        try:
+            response = self.session.get(url)
+            success = response.status_code == 200
+            if success:
+                self.tests_passed += 1
+                self.log(f"✅ Cover Letter PDF Download - Status: {response.status_code}, Content-Type: {response.headers.get('content-type', 'unknown')}", "PASS")
+                # Check if it's actually PDF content
+                if response.headers.get('content-type') == 'application/pdf':
+                    self.log("✅ Cover letter PDF content type verified", "PASS")
+                    self.log(f"✅ Cover letter PDF size: {len(response.content)} bytes", "PASS")
+                else:
+                    self.log(f"⚠️  Expected PDF content-type, got: {response.headers.get('content-type')}", "WARN")
+            else:
+                self.log(f"❌ Cover Letter PDF Download - Expected 200, got {response.status_code}", "FAIL")
+                if response.status_code == 404:
+                    self.log("   This may be expected if no cover letter was generated yet", "INFO")
+            
+            return success, {"content_type": response.headers.get('content-type'), "size": len(response.content)}
+        except Exception as e:
+            self.log(f"❌ Cover Letter PDF Download - Error: {str(e)}", "ERROR")
+            return False, {}
+
+    def test_download_existing_cover_letter_pdf(self):
+        """Test downloading PDF from existing resume with cover letter"""
+        # Use the existing resume ID that already has a cover letter
+        existing_resume_id = "3acf31e3-c6fb-4efd-a476-a6abe2368fa9"
+        
+        url = f"{self.base_url}/resumes/{existing_resume_id}/download-cover-letter-pdf"
+        self.tests_run += 1
+        self.log("Testing Existing Cover Letter PDF Download...")
+        
+        try:
+            response = self.session.get(url)
+            success = response.status_code == 200
+            if success:
+                self.tests_passed += 1
+                self.log(f"✅ Existing Cover Letter PDF Download - Status: {response.status_code}, Size: {len(response.content)} bytes", "PASS")
+                if response.headers.get('content-type') == 'application/pdf':
+                    self.log("✅ Existing cover letter PDF content type verified", "PASS")
+            else:
+                self.log(f"❌ Existing Cover Letter PDF Download - Expected 200, got {response.status_code}", "FAIL")
+            
+            return success, {"content_type": response.headers.get('content-type'), "size": len(response.content)}
+        except Exception as e:
+            self.log(f"❌ Existing Cover Letter PDF Download - Error: {str(e)}", "ERROR")
+            return False, {}
+
     def test_delete_resume(self):
         """Test deleting a resume (run last)"""
         if not self.test_resume_id:
@@ -401,6 +529,13 @@ class ResumeAITester:
             self.test_share_resume,
             self.test_score_resume,
             self.test_google_oauth_endpoint,
+            # NEW COVER LETTER FEATURES
+            self.test_get_existing_cover_letter,  # Test with existing resume first
+            self.test_download_existing_cover_letter_pdf,  # Test PDF download with existing
+            self.test_get_cover_letter,  # Test with new resume (should be empty)
+            self.test_generate_cover_letter,  # Generate cover letter for new resume
+            self.test_get_cover_letter,  # Test retrieval after generation
+            self.test_download_cover_letter_pdf,  # Test PDF download after generation
             # EXISTING FEATURES
             self.test_get_payment_plans,
             self.test_create_payment_order,

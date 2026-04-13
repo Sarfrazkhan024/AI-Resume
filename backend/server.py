@@ -649,6 +649,89 @@ async def download_pdf(resume_id: str, request: Request):
         headers={"Content-Disposition": f"attachment; filename={name}_resume.pdf"}
     )
 
+# ==================== COVER LETTER ROUTES ====================
+
+@app.post("/api/resumes/{resume_id}/cover-letter")
+async def generate_cover_letter(resume_id: str, request: Request):
+    user = await get_current_user(request)
+    resume = await db.resumes.find_one({"id": resume_id, "user_id": user["id"]}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    llm_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not llm_key:
+        raise HTTPException(status_code=500, detail="AI unavailable")
+    try:
+        resume_text = _build_resume_text(resume)
+        job_role = resume.get("job_role", "the position")
+        company = resume.get("company", "")
+        pi = resume.get("personal_info", {})
+        applicant_name = pi.get("name", "the applicant")
+
+        chat = LlmChat(
+            api_key=llm_key,
+            session_id=f"cl-{uuid.uuid4()}",
+            system_message="""You are an expert cover letter writer. Write a professional, compelling cover letter.
+Rules:
+- Write 3-4 paragraphs: opening (role + enthusiasm), body (match skills to role), achievements paragraph, closing (call to action)
+- Be specific to the job role and company
+- Reference actual skills and experience from the resume
+- Professional but personable tone
+- Do NOT include addresses or date headers - just the letter body
+- Start with "Dear Hiring Manager," and end with "Sincerely, [Name]"
+- Keep it under 350 words"""
+        )
+        chat.with_model("openai", "gpt-4o")
+
+        msg = f"""Write a cover letter for {applicant_name} applying for {job_role}{' at ' + company if company else ''}.
+
+Resume data:
+{resume_text}
+
+Write a compelling, personalized cover letter."""
+        response = await chat.send_message(UserMessage(text=msg))
+        cover_letter = response.strip() if response else ""
+
+        if not cover_letter:
+            raise HTTPException(status_code=500, detail="Failed to generate cover letter")
+
+        await db.resumes.update_one({"id": resume_id}, {"$set": {
+            "cover_letter": cover_letter,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }})
+        return {"cover_letter": cover_letter}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Cover letter generation error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate cover letter")
+
+@app.get("/api/resumes/{resume_id}/cover-letter")
+async def get_cover_letter(resume_id: str, request: Request):
+    user = await get_current_user(request)
+    resume = await db.resumes.find_one({"id": resume_id, "user_id": user["id"]}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    cl = resume.get("cover_letter", "")
+    return {"cover_letter": cl}
+
+@app.get("/api/resumes/{resume_id}/download-cover-letter-pdf")
+async def download_cover_letter_pdf(resume_id: str, request: Request):
+    user = await get_current_user(request)
+    resume = await db.resumes.find_one({"id": resume_id, "user_id": user["id"]}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    cl = resume.get("cover_letter", "")
+    if not cl:
+        raise HTTPException(status_code=404, detail="No cover letter found. Generate one first.")
+    from utils.pdf_generator import generate_cover_letter_pdf
+    pi = resume.get("personal_info", {})
+    pdf_buffer = generate_cover_letter_pdf(cl, pi, resume.get("job_role", ""), resume.get("company", ""))
+    name = pi.get("name", "cover_letter").replace(" ", "_")
+    return StreamingResponse(
+        pdf_buffer, media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={name}_cover_letter.pdf"}
+    )
+
 # ==================== PUBLIC ROUTES (No Auth) ====================
 
 @app.get("/api/public/resume/{share_id}")

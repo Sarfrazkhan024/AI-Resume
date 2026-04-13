@@ -118,3 +118,38 @@ def generate_resume_pdf(resume: dict) -> io.BytesIO:
     doc.build(elements)
     buffer.seek(0)
     return buffer
+
+
+def generate_cover_letter_pdf(cover_letter: str, personal_info: dict, job_role: str, company: str) -> io.BytesIO:
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.8*inch, bottomMargin=0.8*inch, leftMargin=0.8*inch, rightMargin=0.8*inch)
+
+    styles = getSampleStyleSheet()
+    primary_color = HexColor("#1a1a2e")
+
+    name_style = ParagraphStyle("CLName", parent=styles["Title"], fontSize=18, textColor=primary_color, spaceAfter=4, alignment=TA_LEFT, fontName="Helvetica-Bold")
+    contact_style = ParagraphStyle("CLContact", parent=styles["Normal"], fontSize=9, textColor=HexColor("#555555"), alignment=TA_LEFT, spaceAfter=16)
+    body_style = ParagraphStyle("CLBody", parent=styles["Normal"], fontSize=11, leading=18, textColor=HexColor("#333333"), fontName="Helvetica", spaceAfter=12)
+
+    elements = []
+
+    name = personal_info.get("name", "")
+    if name:
+        elements.append(Paragraph(name, name_style))
+    contact_parts = []
+    if personal_info.get("email"): contact_parts.append(personal_info["email"])
+    if personal_info.get("phone"): contact_parts.append(personal_info["phone"])
+    if personal_info.get("location"): contact_parts.append(personal_info["location"])
+    if contact_parts:
+        elements.append(Paragraph(" | ".join(contact_parts), contact_style))
+
+    elements.append(HRFlowable(width="100%", thickness=1, color=primary_color, spaceAfter=16))
+
+    for paragraph in cover_letter.split("\n"):
+        stripped = paragraph.strip()
+        if stripped:
+            elements.append(Paragraph(stripped, body_style))
+
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
