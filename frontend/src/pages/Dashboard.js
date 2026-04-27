@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
-import { Plus, FileText, Copy, Trash, DownloadSimple, PencilSimple, Briefcase, Crown, ShareNetwork, ChartBar } from "@phosphor-icons/react";
+import { Plus, FileText, Copy, Trash, DownloadSimple, PencilSimple, Briefcase, Crown, ShareNetwork, ChartBar, LinkedinLogo, Upload, CircleNotch } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
 import { toast } from "sonner";
 
@@ -17,6 +17,11 @@ export default function Dashboard() {
   const [jobRole, setJobRole] = useState("");
   const [company, setCompany] = useState("");
   const [creating, setCreating] = useState(false);
+  const [showLinkedInModal, setShowLinkedInModal] = useState(false);
+  const [linkedInFile, setLinkedInFile] = useState(null);
+  const [liJobRole, setLiJobRole] = useState("");
+  const [liCompany, setLiCompany] = useState("");
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     fetchResumes();
@@ -120,6 +125,37 @@ export default function Dashboard() {
     }
   };
 
+  const handleLinkedInImport = async () => {
+    if (!linkedInFile) { toast.error("Please select a PDF file"); return; }
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", linkedInFile);
+      formData.append("job_role", liJobRole.trim());
+      formData.append("company", liCompany.trim());
+      const { data } = await axios.post(`${API}/resumes/import-linkedin`, formData, {
+        withCredentials: true,
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      toast.success("LinkedIn profile imported!");
+      setShowLinkedInModal(false);
+      setLinkedInFile(null);
+      setLiJobRole("");
+      setLiCompany("");
+      navigate(`/builder/${data.id}`, { state: { resumeId: data.id } });
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      if (err.response?.status === 403) {
+        toast.error(typeof detail === "string" ? detail : "Upgrade to Pro!");
+        navigate("/pricing");
+      } else {
+        toast.error(typeof detail === "string" ? detail : "Failed to import LinkedIn profile");
+      }
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FAFAFA]" data-testid="dashboard-page">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -131,13 +167,22 @@ export default function Dashboard() {
             </h1>
             <p className="text-sm text-[#52525B] mt-1">Manage your resumes and create new ones</p>
           </div>
-          <button
-            onClick={() => setShowNewModal(true)}
-            className="neo-btn flex items-center gap-2 px-6 py-3 bg-[#FDE047] text-[#09090B] border-2 border-[#09090B] rounded-full font-bold shadow-[4px_4px_0px_0px_rgba(9,9,11,1)]"
-            data-testid="create-resume-btn"
-          >
-            <Plus size={18} weight="bold" /> New Resume
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowLinkedInModal(true)}
+              className="neo-btn flex items-center gap-2 px-5 py-3 bg-[#FFFFFF] text-[#09090B] border-2 border-[#09090B] rounded-full font-bold shadow-[4px_4px_0px_0px_rgba(9,9,11,1)]"
+              data-testid="import-linkedin-btn"
+            >
+              <LinkedinLogo size={18} weight="bold" /> Import LinkedIn
+            </button>
+            <button
+              onClick={() => setShowNewModal(true)}
+              className="neo-btn flex items-center gap-2 px-6 py-3 bg-[#FDE047] text-[#09090B] border-2 border-[#09090B] rounded-full font-bold shadow-[4px_4px_0px_0px_rgba(9,9,11,1)]"
+              data-testid="create-resume-btn"
+            >
+              <Plus size={18} weight="bold" /> New Resume
+            </button>
+          </div>
         </div>
 
         {/* Resumes Grid */}
@@ -261,6 +306,70 @@ export default function Dashboard() {
               data-testid="start-building-btn"
             >
               {creating ? "Starting..." : "Start Building"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* LinkedIn Import Modal */}
+      <Dialog open={showLinkedInModal} onOpenChange={setShowLinkedInModal}>
+        <DialogContent className="border-2 border-[#09090B] shadow-[8px_8px_0px_0px_rgba(9,9,11,1)] rounded-xl max-w-md" data-testid="linkedin-import-modal">
+          <DialogHeader>
+            <DialogTitle className="font-['Outfit'] font-bold text-xl flex items-center gap-2">
+              <LinkedinLogo size={24} weight="bold" className="text-[#0A66C2]" /> Import from LinkedIn
+            </DialogTitle>
+            <DialogDescription className="text-sm text-[#52525B]">Upload your LinkedIn profile PDF to auto-fill your resume</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {/* Instructions */}
+            <div className="bg-[#FAFAFA] border-2 border-[#E4E4E7] rounded-xl p-4">
+              <p className="text-xs font-bold text-[#09090B] mb-2">How to get your LinkedIn PDF:</p>
+              <ol className="text-xs text-[#52525B] space-y-1 list-decimal list-inside">
+                <li>Go to your LinkedIn profile</li>
+                <li>Click <span className="font-bold">"More"</span> button below your banner</li>
+                <li>Select <span className="font-bold">"Save to PDF"</span></li>
+                <li>Upload the downloaded PDF here</li>
+              </ol>
+            </div>
+
+            {/* File upload */}
+            <div
+              className={`relative border-2 border-dashed ${linkedInFile ? "border-[#16a34a] bg-[#f0fdf4]" : "border-[#09090B]"} rounded-xl p-6 text-center cursor-pointer hover:bg-[#FAFAFA] transition-all`}
+              onClick={() => document.getElementById("linkedin-pdf-input").click()}
+              data-testid="linkedin-upload-area"
+            >
+              <input id="linkedin-pdf-input" type="file" accept=".pdf" className="hidden" onChange={e => setLinkedInFile(e.target.files?.[0] || null)} data-testid="linkedin-file-input" />
+              {linkedInFile ? (
+                <div className="flex items-center justify-center gap-2">
+                  <FileText size={20} weight="bold" className="text-[#16a34a]" />
+                  <span className="text-sm font-bold text-[#09090B]">{linkedInFile.name}</span>
+                </div>
+              ) : (
+                <>
+                  <Upload size={28} weight="bold" className="mx-auto text-[#A1A1AA] mb-2" />
+                  <p className="text-sm font-bold text-[#09090B]">Click to upload PDF</p>
+                  <p className="text-xs text-[#A1A1AA] mt-1">or drag and drop</p>
+                </>
+              )}
+            </div>
+
+            {/* Optional fields */}
+            <div>
+              <label className="text-sm font-bold text-[#09090B] mb-1 block">Target Job Role (optional)</label>
+              <input type="text" value={liJobRole} onChange={e => setLiJobRole(e.target.value)} placeholder="e.g. Software Engineer" className="w-full bg-[#FAFAFA] border-2 border-[#09090B] rounded-xl px-4 py-3 text-sm font-medium placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] shadow-[3px_3px_0px_0px_rgba(9,9,11,1)]" data-testid="li-job-role-input" />
+            </div>
+            <div>
+              <label className="text-sm font-bold text-[#09090B] mb-1 block">Target Company (optional)</label>
+              <input type="text" value={liCompany} onChange={e => setLiCompany(e.target.value)} placeholder="e.g. Google" className="w-full bg-[#FAFAFA] border-2 border-[#09090B] rounded-xl px-4 py-3 text-sm font-medium placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] shadow-[3px_3px_0px_0px_rgba(9,9,11,1)]" data-testid="li-company-input" />
+            </div>
+
+            <button
+              onClick={handleLinkedInImport}
+              disabled={!linkedInFile || importing}
+              className="neo-btn w-full px-6 py-3 bg-[#FDE047] text-[#09090B] border-2 border-[#09090B] rounded-full font-bold shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] disabled:opacity-50 flex items-center justify-center gap-2"
+              data-testid="import-linkedin-submit-btn"
+            >
+              {importing ? <><CircleNotch size={18} weight="bold" className="animate-spin" /> Importing & parsing with AI...</> : <><LinkedinLogo size={18} weight="bold" /> Import & Create Resume</>}
             </button>
           </div>
         </DialogContent>

@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -462,6 +462,114 @@ def _build_resume_text(resume: dict) -> str:
     if ach:
         parts.append(f"\nAchievements: {', '.join(str(a) for a in ach) if isinstance(ach, list) else str(ach)}")
     return "\n".join(parts)
+
+# ==================== LINKEDIN IMPORT ====================
+
+@resume_router.post("/import-linkedin")
+async def import_linkedin(request: Request, file: UploadFile = File(...), job_role: str = Form(""), company: str = Form("")):
+    user = await get_current_user(request)
+    if user.get("plan") == "free":
+        count = await db.resumes.count_documents({"user_id": user["id"]})
+        if count >= 1:
+            raise HTTPException(status_code=403, detail="Free plan allows only 1 resume. Upgrade to Pro!")
+
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Please upload a PDF file")
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Max 10MB.")
+
+    # Extract text from PDF
+    try:
+        import pdfplumber
+        pdf_text = ""
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    pdf_text += text + "\n"
+        if not pdf_text.strip():
+            raise HTTPException(status_code=400, detail="Could not extract text from PDF. Is it a valid LinkedIn export?")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"PDF parse error: {e}")
+        raise HTTPException(status_code=400, detail="Failed to read PDF file")
+
+    # Use AI to parse LinkedIn data into structured resume
+    llm_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not llm_key:
+        raise HTTPException(status_code=500, detail="AI parsing unavailable")
+
+    try:
+        chat = LlmChat(
+            api_key=llm_key,
+            session_id=f"li-{uuid.uuid4()}",
+            system_message="""You parse LinkedIn profile PDF exports into structured resume JSON.
+Return ONLY valid JSON in this exact format:
+{
+  "name": "Full Name",
+  "email": "",
+  "phone": "",
+  "location": "City, Country",
+  "summary": "Professional summary 2-3 sentences",
+  "education": [{"degree": "...", "institution": "...", "year": "...", "gpa": ""}],
+  "skills": ["skill1", "skill2"],
+  "experience": [{"title": "Job Title", "company": "Company", "duration": "Start - End", "description": "Key achievements and responsibilities"}],
+  "projects": [{"name": "...", "description": "...", "tech": ""}],
+  "achievements": ["achievement1"],
+  "hobbies": []
+}
+Rules: Extract ALL information. Write professional descriptions. If a field has no data, use empty string or empty array. Return ONLY valid JSON."""
+        )
+        chat.with_model("openai", "gpt-4o")
+
+        truncated = pdf_text[:8000]
+        response = await chat.send_message(UserMessage(text=f"Parse this LinkedIn profile into resume JSON:\n\n{truncated}"))
+        parsed = _parse_json(response, None)
+
+        if not parsed or not isinstance(parsed, dict):
+            raise HTTPException(status_code=500, detail="Failed to parse LinkedIn data")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"LinkedIn AI parse error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to parse LinkedIn profile")
+
+    # Create resume from parsed data
+    resume_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    title = job_role if job_role else "Imported from LinkedIn"
+    if company:
+        title += f" at {company}"
+
+    resume_doc = {
+        "id": resume_id, "user_id": user["id"],
+        "title": title,
+        "job_role": job_role or parsed.get("name", "Professional"),
+        "company": company,
+        "template": "modern",
+        "personal_info": {
+            "name": parsed.get("name", ""),
+            "email": parsed.get("email", ""),
+            "phone": parsed.get("phone", ""),
+            "location": parsed.get("location", ""),
+        },
+        "summary": parsed.get("summary", ""),
+        "education": parsed.get("education", []),
+        "skills": parsed.get("skills", []),
+        "experience": parsed.get("experience", []),
+        "projects": parsed.get("projects", []),
+        "achievements": parsed.get("achievements", []),
+        "hobbies": parsed.get("hobbies", []),
+        "status": "complete",
+        "imported_from": "linkedin",
+        "created_at": now, "updated_at": now
+    }
+    await db.resumes.insert_one(resume_doc)
+    resume_doc.pop("_id", None)
+    return resume_doc
 
 # ==================== CHAT ROUTES ====================
 

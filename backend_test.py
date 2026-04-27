@@ -200,6 +200,163 @@ class ResumeAITester:
             200
         )
 
+    def test_linkedin_import(self):
+        """Test LinkedIn PDF import functionality"""
+        pdf_path = "/tmp/test_linkedin.pdf"
+        
+        # Check if test PDF exists
+        import os
+        if not os.path.exists(pdf_path):
+            self.log(f"❌ Test LinkedIn PDF not found at {pdf_path}", "SKIP")
+            return False, {}, {}
+        
+        try:
+            # Prepare multipart form data
+            with open(pdf_path, 'rb') as pdf_file:
+                files = {'file': ('test_linkedin.pdf', pdf_file, 'application/pdf')}
+                data = {
+                    'job_role': 'Senior Software Engineer',
+                    'company': 'Meta'
+                }
+                
+                # Make direct request without session to avoid JSON headers
+                url = f"{self.base_url}/resumes/import-linkedin"
+                headers = {}
+                
+                # Use cookies from session for authentication
+                cookies = self.session.cookies
+                
+                self.tests_run += 1
+                self.log("Testing LinkedIn Import...")
+                
+                import requests
+                response = requests.post(
+                    url, 
+                    data=data, 
+                    files=files, 
+                    headers=headers,
+                    cookies=cookies
+                )
+                
+                success = response.status_code == 200
+                if success:
+                    self.tests_passed += 1
+                    self.log(f"✅ LinkedIn Import - Status: {response.status_code}")
+                    
+                    try:
+                        response_data = response.json()
+                        self.log(f"   Resume ID: {response_data.get('id')}")
+                        self.log(f"   Title: {response_data.get('title')}")
+                        self.log(f"   Status: {response_data.get('status')}")
+                        self.log(f"   Imported from: {response_data.get('imported_from')}")
+                        self.log(f"   Name: {response_data.get('personal_info', {}).get('name')}")
+                        self.log(f"   Skills: {len(response_data.get('skills', []))} items")
+                        self.log(f"   Experience: {len(response_data.get('experience', []))} items")
+                        self.log(f"   Education: {len(response_data.get('education', []))} items")
+                        
+                        # Store resume ID for other tests
+                        if response_data.get('id'):
+                            self.test_resume_id = response_data['id']
+                        
+                        return True, response_data, {}
+                    except Exception as e:
+                        self.log(f"   Response parsing error: {e}")
+                        return True, response.text, {}
+                else:
+                    self.log(f"❌ LinkedIn Import - Expected 200, got {response.status_code}")
+                    self.log(f"   Response: {response.text[:500]}")
+                    return False, {}, {}
+                    
+        except Exception as e:
+            self.log(f"❌ LinkedIn Import - Error: {str(e)}")
+            return False, {}, {}
+
+    def test_linkedin_import_free_plan_limit(self):
+        """Test LinkedIn import with free plan limit enforcement"""
+        # Create a test user with free plan
+        test_email = f"test_linkedin_{datetime.now().strftime('%H%M%S')}@test.com"
+        
+        # Register new user
+        success, user_data, _ = self.run_test(
+            "Register Test User for LinkedIn Import",
+            "POST",
+            "/auth/register",
+            200,
+            data={"name": "Test User", "email": test_email, "password": "testpass123"}
+        )
+        
+        if not success:
+            self.log("❌ Failed to create test user for LinkedIn import limit test", "SKIP")
+            return False, {}, {}
+        
+        # Test first LinkedIn import (should succeed)
+        pdf_path = "/tmp/test_linkedin.pdf"
+        import os
+        if not os.path.exists(pdf_path):
+            self.log(f"❌ Test LinkedIn PDF not found at {pdf_path}", "SKIP")
+            return False, {}, {}
+        
+        try:
+            with open(pdf_path, 'rb') as pdf_file:
+                files = {'file': ('test_linkedin.pdf', pdf_file, 'application/pdf')}
+                data = {'job_role': 'Test Role', 'company': 'Test Company'}
+                
+                url = f"{self.base_url}/resumes/import-linkedin"
+                
+                self.tests_run += 1
+                self.log("Testing LinkedIn Import (Free Plan - First Resume)...")
+                
+                import requests
+                response = requests.post(
+                    url, 
+                    data=data, 
+                    files=files,
+                    cookies=self.session.cookies
+                )
+                
+                if response.status_code != 200:
+                    self.log(f"❌ First LinkedIn import failed: {response.status_code}")
+                    self.log(f"   Response: {response.text[:300]}")
+                    return False, {}, {}
+                
+                self.tests_passed += 1
+                self.log("✅ First LinkedIn import succeeded")
+                
+        except Exception as e:
+            self.log(f"❌ First LinkedIn import error: {str(e)}")
+            return False, {}, {}
+        
+        # Test second LinkedIn import (should fail with 403)
+        try:
+            with open(pdf_path, 'rb') as pdf_file:
+                files = {'file': ('test_linkedin.pdf', pdf_file, 'application/pdf')}
+                data = {'job_role': 'Test Role 2', 'company': 'Test Company 2'}
+                
+                self.tests_run += 1
+                self.log("Testing LinkedIn Import (Free Plan - Second Resume - Should Fail)...")
+                
+                import requests
+                response = requests.post(
+                    url, 
+                    data=data, 
+                    files=files,
+                    cookies=self.session.cookies
+                )
+                
+                success = response.status_code == 403
+                if success:
+                    self.tests_passed += 1
+                    self.log("✅ Free plan limit enforced correctly (403)")
+                    return True, {}, {}
+                else:
+                    self.log(f"❌ Expected 403, got {response.status_code}")
+                    self.log(f"   Response: {response.text[:300]}")
+                    return False, {}, {}
+                    
+        except Exception as e:
+            self.log(f"❌ Second LinkedIn import error: {str(e)}")
+            return False, {}, {}
+
     def test_get_payment_plans(self):
         """Test getting payment plans"""
         return self.run_test("Get Payment Plans", "GET", "/payments/plans", 200)
@@ -525,6 +682,9 @@ class ResumeAITester:
             self.test_get_resume,
             self.test_update_resume,
             self.test_duplicate_resume,
+            # LINKEDIN IMPORT FEATURE
+            self.test_linkedin_import,
+            self.test_linkedin_import_free_plan_limit,
             # NEW FEATURES TESTING
             self.test_share_resume,
             self.test_score_resume,
