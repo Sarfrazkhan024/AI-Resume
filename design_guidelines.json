@@ -1,95 +1,89 @@
 {
   "theme": "Light",
-  "archetype": "3 (Pastel & Soft) mixed with Neo-Brutalist",
-  "vibe": "Approachable, optimistic, Gen-Z friendly, effortless, punchy",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "rationale": "For an AI-powered Resume Builder, we need a high-converting, authoritative presence that builds trust immediately. A Swiss & High-Contrast archetype emphasizes clarity, function, and professionalism, shedding unnecessary decoration. It leans on stark contrasts, sharp typography, and realistic UI mockups to drive conversions.",
   "colors": {
-    "background_base": "#FAFAFA",
-    "background_card": "#FFFFFF",
-    "primary": "#FDE047",
-    "primary_hover": "#FEF08A",
-    "secondary": "#A7F3D0",
-    "accent": "#C4B5FD",
-    "text_primary": "#09090B",
-    "text_secondary": "#52525B",
-    "border_hard": "#09090B",
-    "border_soft": "#E4E4E7",
-    "error": "#FDA4AF",
-    "success": "#86EFAC"
+    "background": "#FFFFFF",
+    "foreground": "#0A0A0A",
+    "surface": "#FAFAFA",
+    "surface_hover": "#F4F4F5",
+    "primary": "#0055FF",
+    "primary_foreground": "#FFFFFF",
+    "secondary": "#F3F4F6",
+    "secondary_foreground": "#111827",
+    "border": "#E5E7EB",
+    "accent": "#0055FF",
+    "muted": "#F3F4F6",
+    "muted_foreground": "#6B7280"
   },
   "typography": {
-    "font_heading": "Outfit, sans-serif",
-    "font_body": "DM Sans, sans-serif",
-    "font_resume_document": "Inter, sans-serif",
-    "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none text-[#09090B]",
-    "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[#09090B]",
-    "h3": "text-xl sm:text-2xl font-semibold text-[#09090B]",
-    "body": "text-base leading-relaxed text-[#52525B]",
-    "small": "text-sm font-medium tracking-wide text-[#52525B]",
-    "button": "text-base font-bold tracking-wide"
-  },
-  "spacing_and_layout": {
-    "container_padding": "p-6 sm:p-8 lg:p-12",
-    "gap_large": "gap-12 lg:gap-24",
-    "gap_medium": "gap-6 lg:gap-8",
-    "gap_small": "gap-4",
-    "border_radius_card": "rounded-xl",
-    "border_radius_button": "rounded-full"
-  },
-  "components": {
-    "button_primary": "bg-[#FDE047] text-[#09090B] border-2 border-[#09090B] rounded-full px-8 py-3 font-bold shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] transition-all",
-    "button_secondary": "bg-[#FFFFFF] text-[#09090B] border-2 border-[#09090B] rounded-full px-8 py-3 font-bold shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] transition-all",
-    "card_neo": "bg-[#FFFFFF] border-2 border-[#09090B] rounded-xl p-6 shadow-[6px_6px_0px_0px_rgba(9,9,11,1)]",
-    "chat_bubble_ai": "bg-[#FFFFFF] border-2 border-[#09090B] rounded-2xl rounded-tl-sm p-4 shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] text-[#09090B]",
-    "chat_bubble_user": "bg-[#A7F3D0] border-2 border-[#09090B] rounded-2xl rounded-tr-sm p-4 shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] text-[#09090B] ml-auto",
-    "input_field": "bg-[#FFFFFF] border-2 border-[#09090B] rounded-xl px-4 py-3 text-[#09090B] placeholder:text-[#A1A1AA] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD] shadow-[4px_4px_0px_0px_rgba(9,9,11,1)]",
-    "resume_preview_paper": "bg-[#FFFFFF] rounded-sm p-8 shadow-2xl mx-auto aspect-[1/1.414] w-full max-w-[800px] border border-gray-200"
-  },
-  "motion": {
-    "entrance_slide_up": "animate-in slide-in-from-bottom-4 fade-in duration-500",
-    "chat_bubble_appear": "animate-in zoom-in-95 fade-in duration-300",
-    "hover_press": "hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] transition-all"
-  },
-  "icons": {
-    "library": "@phosphor-icons/react",
-    "style": "weight='bold' or weight='duotone'"
-  },
-  "media": {
-    "hero_image": {
-      "url": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
-      "description": "Abstract colorful 3D blocks representing modern creation and building blocks",
-      "category": "hero"
+    "headings": {
+      "family": "Outfit",
+      "weights": ["400", "700", "900"],
+      "tracking": "tracking-tighter"
     },
-    "logo_google": {
-      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg",
-      "description": "Google original logo",
-      "category": "authentication"
+    "body": {
+      "family": "Manrope",
+      "weights": ["400", "500", "600"],
+      "tracking": "tracking-normal"
     },
-    "logo_whatsapp": {
-      "url": "https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg",
-      "description": "WhatsApp original logo",
-      "category": "authentication"
-    },
-    "testimonial_user1": {
-      "url": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=2550&auto=format&fit=crop",
-      "description": "Gen Z student smiling confidently",
-      "category": "testimonials"
-    },
-    "testimonial_user2": {
-      "url": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2671&auto=format&fit=crop",
-      "description": "Young professionals collaborating in a modern space",
-      "category": "testimonials"
+    "rules": {
+      "h1": "text-5xl md:text-6xl font-black tracking-tighter leading-none",
+      "h2": "text-3xl md:text-4xl font-bold tracking-tight",
+      "h3": "text-2xl font-bold tracking-tight",
+      "overline": "uppercase text-xs font-bold tracking-[0.2em] text-muted-foreground",
+      "body": "text-base md:text-lg text-muted-foreground leading-relaxed"
     }
   },
-  "instructions_to_main_agent": [
-    "Use raw HTML/Tailwind for marketing sections. Use customized Shadcn for the dashboard and chat inputs.",
-    "Implement a Neo-Brutalist UI: everything interactive should have a hard black border (`border-2 border-[#09090B]`) and a solid black shadow (`shadow-[4px_4px_0px_0px_rgba(9,9,11,1)]`).",
-    "When a button is hovered or clicked, shift it down and right, and reduce the shadow size so it feels tactile and physically pressed.",
-    "For the main app UI: Use a split-screen layout on desktop. Left side: Chatbot interface where the AI asks questions. Right side: Live generated resume preview.",
-    "On mobile: The chat interface takes up the full screen. Add a sticky floating action button (FAB) or bottom sheet to toggle the 'Live Resume Preview'.",
-    "Font choices: Use 'Outfit' for all headings and 'DM Sans' for body text. The actual generated resume document must use standard ATS-friendly fonts like 'Inter'.",
-    "Add 'data-testid' to all interactive elements for testing (e.g., data-testid='login-google-button').",
-    "Never use a fully transparent header over images; ensure the nav is visible with a solid or thick glassmorphism background.",
-    "Install and use `@phosphor-icons/react` for all icons, preferably using 'bold' weight to match the brutalist lines.",
-    "Do not use generic placeholder images like via.placeholder.com. ONLY use the URLs provided in the media section of this JSON."
-  ]
+  "layout": {
+    "spacing_system": "Generous. Use p-8, p-12, py-24, gap-8. Containers with borders MUST have padding to prevent collision.",
+    "grids": {
+      "feature_bento": "grid-cols-1 md:grid-cols-12 gap-6",
+      "dashboard_stats": "grid-cols-1 md:grid-cols-4 gap-4"
+    },
+    "alignment": "Optical alignment over geometrical. Left-align dense content, center-align hero strictly if visually balanced, though asymmetrical left-aligned hero is preferred for SaaS."
+  },
+  "surfaces": {
+    "header": "Crystal Glassmorphism: backdrop-blur-xl bg-white/70, 1px border-white/40 inner stroke, shadow-sm",
+    "cards": "Flat background, 1px subtle border-border, no shadow. Hover: -translate-y-1, shadow-lg, border-primary/20",
+    "mockup_wrapper": "High-fidelity CSS/HTML UI mockup inside the Hero section. Use a rounded-2xl container with a subtle shadow-2xl, border border-border/50, and a glass-like header bar mimicking a browser or app window.",
+    "buttons": "Sharp, pill-shaped or rounded-md. Primary: bg-primary text-white hover:bg-primary/90. Secondary: bg-white border border-border hover:bg-muted."
+  },
+  "motion": {
+    "hover": "Explicit hover states on all interactive elements (e.g., hover:bg-primary/90 hover:text-white).",
+    "transitions": "transition-all duration-300 ease-out",
+    "entrance": "Staggered fade-up for Bento grid items."
+  },
+  "components_strategy": {
+    "marketing_sections": "Pure HTML + Tailwind for structural layouts (Bento, Hero, Steps).",
+    "interactive": "Shadcn components heavily customized (Buttons, Badges, Tabs for feature switching).",
+    "product_mockup": "Do not use static images for the hero mockup. Construct a pseudo-UI using pure Tailwind/HTML to represent the AI chat on the left and the generated resume document on the right. This increases page quality.",
+    "icons": "Use lucide-react for all standard iconography."
+  },
+  "media": {
+    "logos": [
+      { "url": "https://images.unsplash.com/photo-1558688077-dcc0f0988f14?auto=format&fit=crop&w=400&q=80", "description": "Abstract Brand Logo 1", "category": "social_proof" },
+      { "url": "https://images.unsplash.com/photo-1630041353236-d1e5a3c23116?auto=format&fit=crop&w=400&q=80", "description": "Abstract Brand Logo 2", "category": "social_proof" },
+      { "url": "https://images.unsplash.com/photo-1605514449453-c6ed5f1963e7?auto=format&fit=crop&w=400&q=80", "description": "Abstract Brand Logo 3", "category": "social_proof" },
+      { "url": "https://images.unsplash.com/photo-1642621859598-79bc9a87fd77?auto=format&fit=crop&w=400&q=80", "description": "Abstract Brand Logo 4", "category": "social_proof" }
+    ],
+    "portraits": [
+      { "url": "https://images.unsplash.com/photo-1576558656222-ba66febe3dec?auto=format&fit=crop&w=400&q=80", "description": "User Avatar 1", "category": "testimonial" },
+      { "url": "https://images.unsplash.com/photo-1762522926157-bcc04bf0b10a?auto=format&fit=crop&w=400&q=80", "description": "User Avatar 2", "category": "testimonial" },
+      { "url": "https://images.unsplash.com/photo-1651684215020-f7a5b6610f23?auto=format&fit=crop&w=400&q=80", "description": "User Avatar 3", "category": "testimonial" },
+      { "url": "https://images.unsplash.com/photo-1762522927402-f390672558d8?auto=format&fit=crop&w=400&q=80", "description": "User Avatar 4", "category": "testimonial" }
+    ]
+  },
+  "page_sections_instructions": {
+    "header": "Crystal Glassmorphism sticky header. Logo on left, nav links center, CTA right. No hamburger on desktop.",
+    "hero": "Short outcome-focused headline (<44 chars). Subtitle with high contrast. Primary sticky CTA. Followed by a massive, central product mockup built entirely in CSS/HTML (showing AI chat on left side and live resume preview on the right).",
+    "social_proof": "Ticker/Marquee of partner logos using provided unsplash abstract images. Very subtle opacity (opacity-50) and grayscale.",
+    "how_it_works": "Vertical timeline or 1x3 grid showing '1. Upload/Connect LinkedIn', '2. AI Rewrite & Optimize', '3. Export & Apply'. Use clean, 1px bordered cards.",
+    "feature_grid": "Bento Grid (TETRIS MODE). 12-column setup. Hero cell: 'ATS Scoring' (col-span-full md:col-span-8 row-span-2). Tall cell: 'AI Cover Letters' (col-span-4 row-span-2). Square cells for 'Templates' and 'Share Links'. Every cell must have an inner HTML UI snippet or icon.",
+    "testimonials": "Dense masonry or 1x3 grid of testimonials using provided portrait URLs. High contrast text.",
+    "cta_section": "Dark inverted section (bg-zinc-950 text-white) to break the rhythm. Massive H2. Single CTA. No credit card required micro-copy."
+  },
+  "accessibility": {
+    "rules": "All interactive elements MUST have data-testid attributes. Focus states must ring-2 ring-primary. Hover text color explicitly set."
+  }
 }
