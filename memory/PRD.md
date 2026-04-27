@@ -50,6 +50,12 @@ Build a modern, mobile-first web platform called "ResumeAI" that helps users cre
 - [x] Dirty state detection with Save button
 - [x] Real-time preview updates after saving edits
 
+### Phase 5 (April 13, 2026)
+- [x] LinkedIn profile import (PDF upload → pdfplumber text extraction → GPT-4o structured parsing)
+- [x] Import modal with instructions, file upload, optional job role/company
+- [x] Auto-creates complete resume with all sections populated
+- [x] Navigates to builder for review/editing after import
+
 ## Prioritized Backlog
 
 ### P1 (Important)
