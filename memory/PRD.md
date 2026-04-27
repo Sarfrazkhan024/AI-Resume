@@ -56,6 +56,14 @@ Build a modern, mobile-first web platform called "ResumeAI" that helps users cre
 - [x] Auto-creates complete resume with all sections populated
 - [x] Navigates to builder for review/editing after import
 
+### Phase 6 (April 13, 2026)
+- [x] Job Recommendations Engine (GPT-4o suggests 5-8 matching jobs with match score, salary range, reasons)
+- [x] Expanded to 10 premium templates (added Compact, Gradient to existing 8)
+- [x] Visual template gallery selector with mini color previews
+- [x] Public resume download (visitors can download PDF from shared links)
+- [x] Improved landing page (9 features, 3 testimonials, section badges, dark marketing section, feature tags)
+- [x] CTA banner on public resume pages driving sign-ups
+
 ## Prioritized Backlog
 
 ### P1 (Important)
