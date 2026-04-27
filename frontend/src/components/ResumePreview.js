@@ -41,6 +41,16 @@ const TEMPLATES = {
     sectionTitle: "text-[#09090B] border-b-4 border-[#dc2626]",
     skillChip: "bg-[#fef2f2] border-[#dc2626] text-[#09090B]",
   },
+  compact: {
+    headerBg: "bg-[#1e3a5f]", headerText: "text-white",
+    sectionTitle: "text-[#1e3a5f] border-b border-[#1e3a5f]",
+    skillChip: "bg-[#eff6ff] border-[#3b82f6] text-[#1e3a5f]",
+  },
+  gradient: {
+    headerBg: "bg-gradient-to-r from-[#0ea5e9] to-[#6366f1]", headerText: "text-white",
+    sectionTitle: "text-[#4f46e5] border-b-2 border-[#0ea5e9]",
+    skillChip: "bg-[#eef2ff] border-[#6366f1] text-[#4f46e5]",
+  },
 };
 
 function SectionTitle({ icon: Icon, title, template }) {

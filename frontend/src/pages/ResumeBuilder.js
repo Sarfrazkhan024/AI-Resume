@@ -4,12 +4,12 @@ import axios from "axios";
 import ChatInterface from "../components/ChatInterface";
 import ResumePreview from "../components/ResumePreview";
 import SectionEditor from "../components/SectionEditor";
-import { Eye, ChatCircle, DownloadSimple, Palette, ArrowLeft, ShareNetwork, ChartBar, Envelope, SpinnerGap, FileText, PencilSimple } from "@phosphor-icons/react";
+import { Eye, ChatCircle, DownloadSimple, Palette, ArrowLeft, ShareNetwork, ChartBar, Envelope, SpinnerGap, FileText, PencilSimple, Briefcase, MagnifyingGlass } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../components/ui/dialog";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const TEMPLATES = ["modern", "classic", "minimal", "executive", "creative", "tech", "elegant", "bold"];
+const TEMPLATES = ["modern", "classic", "minimal", "executive", "creative", "tech", "elegant", "bold", "compact", "gradient"];
 
 export default function ResumeBuilder() {
   const { sessionId } = useParams();
@@ -29,6 +29,22 @@ export default function ResumeBuilder() {
   const [coverLetter, setCoverLetter] = useState("");
   const [generatingCL, setGeneratingCL] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [showRecs, setShowRecs] = useState(false);
+  const [recs, setRecs] = useState([]);
+  const [loadingRecs, setLoadingRecs] = useState(false);
+
+  const TEMPLATE_COLORS = {
+    modern: { bg: "#1a1a2e", accent: "#C4B5FD" },
+    classic: { bg: "#FFFFFF", accent: "#09090B" },
+    minimal: { bg: "#FAFAFA", accent: "#A1A1AA" },
+    executive: { bg: "#0f172a", accent: "#d97706" },
+    creative: { bg: "#7c3aed", accent: "#db2777" },
+    tech: { bg: "#022c22", accent: "#4ade80" },
+    elegant: { bg: "#44403c", accent: "#c2956a" },
+    bold: { bg: "#09090B", accent: "#dc2626" },
+    compact: { bg: "#1e3a5f", accent: "#3b82f6" },
+    gradient: { bg: "#6366f1", accent: "#0ea5e9" },
+  };
 
   // If navigated from dashboard with resumeId (existing resume), find session
   const resumeId = location.state?.resumeId;
@@ -194,6 +210,21 @@ export default function ResumeBuilder() {
     }
   };
 
+  const handleGetRecommendations = async () => {
+    if (!resume?.id) return;
+    setLoadingRecs(true);
+    setShowRecs(true);
+    try {
+      const { data } = await axios.post(`${API}/resumes/${resume.id}/recommendations`, {}, { withCredentials: true });
+      setRecs(data.recommendations || []);
+    } catch {
+      toast.error("Failed to get recommendations");
+      setShowRecs(false);
+    } finally {
+      setLoadingRecs(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA]">
@@ -216,25 +247,48 @@ export default function ResumeBuilder() {
           </button>
           <span className="font-bold text-sm truncate max-w-[200px]">{resume?.title || "New Resume"}</span>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Template selector */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Template gallery selector */}
           <div className="relative">
             <button onClick={() => setShowTemplates(!showTemplates)} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#C4B5FD] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="template-selector-btn">
               <Palette size={14} weight="bold" /> {template}
             </button>
             {showTemplates && (
-              <div className="absolute right-0 top-full mt-2 bg-[#FFFFFF] border-2 border-[#09090B] rounded-xl shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] z-50 overflow-hidden" data-testid="template-dropdown">
-                {TEMPLATES.map(t => (
-                  <button key={t} onClick={() => handleTemplateChange(t)} className={`w-full px-4 py-2 text-left text-sm font-bold hover:bg-[#FDE047]/30 transition-all ${t === template ? "bg-[#FDE047]" : ""}`} data-testid={`template-option-${t}`}>
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                  </button>
-                ))}
+              <div className="absolute right-0 top-full mt-2 bg-[#FFFFFF] border-2 border-[#09090B] rounded-xl shadow-[6px_6px_0px_0px_rgba(9,9,11,1)] z-50 p-3 w-[320px]" data-testid="template-gallery">
+                <p className="text-xs font-bold text-[#52525B] mb-2 uppercase tracking-wider">Choose Template</p>
+                <div className="grid grid-cols-5 gap-2">
+                  {TEMPLATES.map(t => {
+                    const c = TEMPLATE_COLORS[t];
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => handleTemplateChange(t)}
+                        className={`group relative rounded-lg overflow-hidden border-2 transition-all ${t === template ? "border-[#FDE047] shadow-[2px_2px_0px_0px_rgba(9,9,11,1)] scale-105" : "border-[#E4E4E7] hover:border-[#09090B]"}`}
+                        data-testid={`template-option-${t}`}
+                        title={t.charAt(0).toUpperCase() + t.slice(1)}
+                      >
+                        <div className="aspect-[3/4] flex flex-col">
+                          <div className="h-[35%]" style={{ background: c.bg }} />
+                          <div className="flex-1 bg-white p-1">
+                            <div className="h-1 w-3/4 rounded-full mb-1" style={{ background: c.accent }} />
+                            <div className="h-0.5 w-full bg-[#E4E4E7] rounded-full mb-0.5" />
+                            <div className="h-0.5 w-2/3 bg-[#E4E4E7] rounded-full" />
+                          </div>
+                        </div>
+                        <span className="absolute bottom-0 left-0 right-0 bg-[#09090B]/80 text-white text-[8px] font-bold text-center py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">{t}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
 
           {resume && (
             <>
+              <button onClick={handleGetRecommendations} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#A7F3D0] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="job-recs-btn">
+                <MagnifyingGlass size={14} weight="bold" /> Jobs
+              </button>
               <button onClick={handleScore} className="neo-btn flex items-center gap-1 px-3 py-1.5 bg-[#FDE047] border-2 border-[#09090B] rounded-lg text-xs font-bold shadow-[2px_2px_0px_0px_rgba(9,9,11,1)]" data-testid="ats-score-btn">
                 <ChartBar size={14} weight="bold" /> Score
               </button>
@@ -432,6 +486,55 @@ export default function ResumeBuilder() {
               )}
             </div>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Job Recommendations Modal */}
+      <Dialog open={showRecs} onOpenChange={setShowRecs}>
+        <DialogContent className="border-2 border-[#09090B] shadow-[8px_8px_0px_0px_rgba(9,9,11,1)] rounded-xl max-w-lg max-h-[80vh] overflow-y-auto" data-testid="job-recs-modal">
+          <DialogHeader>
+            <DialogTitle className="font-['Outfit'] font-bold text-xl flex items-center gap-2">
+              <MagnifyingGlass size={22} weight="bold" className="text-[#A7F3D0]" /> Job Recommendations
+            </DialogTitle>
+            <DialogDescription className="text-sm text-[#52525B]">AI-powered job matches based on your resume</DialogDescription>
+          </DialogHeader>
+          {loadingRecs ? (
+            <div className="py-8 flex flex-col items-center gap-4">
+              <div className="flex gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#FDE047] animate-bounce" style={{ animationDelay: "0s" }} />
+                <div className="w-3 h-3 rounded-full bg-[#A7F3D0] animate-bounce" style={{ animationDelay: "0.15s" }} />
+                <div className="w-3 h-3 rounded-full bg-[#C4B5FD] animate-bounce" style={{ animationDelay: "0.3s" }} />
+              </div>
+              <p className="text-sm font-medium text-[#52525B]">Finding the best jobs for you...</p>
+            </div>
+          ) : recs.length > 0 ? (
+            <div className="space-y-3 pt-2">
+              {recs.map((rec, i) => (
+                <div key={i} className="bg-[#FAFAFA] border-2 border-[#E4E4E7] rounded-xl p-4 hover:border-[#09090B] hover:shadow-[3px_3px_0px_0px_rgba(9,9,11,1)] transition-all" data-testid={`job-rec-${i}`}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <h4 className="font-bold text-sm text-[#09090B]">{rec.title}</h4>
+                      <p className="text-xs text-[#52525B]">{rec.company_type}</p>
+                    </div>
+                    <div className={`flex-shrink-0 px-2 py-1 rounded-full text-xs font-bold border-2 border-[#09090B] ${rec.match_score >= 80 ? "bg-[#A7F3D0]" : rec.match_score >= 60 ? "bg-[#FDE047]" : "bg-[#E4E4E7]"}`}>
+                      {rec.match_score}% match
+                    </div>
+                  </div>
+                  <p className="text-xs text-[#52525B] mb-2">{rec.reason}</p>
+                  {rec.salary_range && <p className="text-xs font-bold text-[#09090B] mb-2">{rec.salary_range}</p>}
+                  {rec.skills_matched?.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {rec.skills_matched.map((s, j) => (
+                        <span key={j} className="text-[9px] px-2 py-0.5 bg-[#A7F3D0]/30 border border-[#A7F3D0] rounded-full text-[#09090B] font-medium">{s}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-center text-[#52525B] py-4">No recommendations available. Complete your resume first.</p>
+          )}
         </DialogContent>
       </Dialog>
     </div>

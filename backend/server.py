@@ -849,6 +849,52 @@ async def get_public_resume(share_id: str):
         raise HTTPException(status_code=404, detail="Resume not found")
     return resume
 
+@app.get("/api/public/resume/{share_id}/download-pdf")
+async def download_public_pdf(share_id: str):
+    resume = await db.resumes.find_one({"share_id": share_id}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    from utils.pdf_generator import generate_resume_pdf
+    pdf_buffer = generate_resume_pdf(resume)
+    name = resume.get("personal_info", {}).get("name", "resume").replace(" ", "_")
+    return StreamingResponse(
+        pdf_buffer, media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={name}_resume.pdf"}
+    )
+
+# ==================== JOB RECOMMENDATIONS ====================
+
+@app.post("/api/resumes/{resume_id}/recommendations")
+async def get_recommendations(resume_id: str, request: Request):
+    user = await get_current_user(request)
+    resume = await db.resumes.find_one({"id": resume_id, "user_id": user["id"]}, {"_id": 0})
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    llm_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not llm_key:
+        raise HTTPException(status_code=500, detail="AI unavailable")
+    try:
+        resume_text = _build_resume_text(resume)
+        chat = LlmChat(
+            api_key=llm_key,
+            session_id=f"rec-{uuid.uuid4()}",
+            system_message="""You are a career advisor. Analyze the resume and recommend jobs.
+Return ONLY valid JSON array with 5-8 job recommendations:
+[{"title": "Job Title", "company_type": "e.g. Tech Startup, MNC, Consulting", "match_score": 85, "reason": "Short reason why this role fits", "salary_range": "e.g. 8-15 LPA or $80k-120k", "skills_matched": ["skill1", "skill2"]}]
+Sort by match_score descending. Be realistic and specific."""
+        )
+        chat.with_model("openai", "gpt-4o")
+        msg = f"Recommend jobs for this candidate applying for {resume.get('job_role', 'any role')}:\n\n{resume_text}"
+        response = await chat.send_message(UserMessage(text=msg))
+        recs = _parse_json(response, [])
+        if not isinstance(recs, list):
+            recs = []
+        await db.resumes.update_one({"id": resume_id}, {"$set": {"recommendations": recs, "updated_at": datetime.now(timezone.utc).isoformat()}})
+        return {"recommendations": recs}
+    except Exception as e:
+        logger.error(f"Recommendations error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate recommendations")
+
 # ==================== INCLUDE ROUTERS ====================
 
 app.include_router(auth_router)

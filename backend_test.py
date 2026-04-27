@@ -647,6 +647,99 @@ class ResumeAITester:
             self.log(f"❌ Existing Cover Letter PDF Download - Error: {str(e)}", "ERROR")
             return False, {}
 
+    def test_job_recommendations(self):
+        """Test job recommendations feature (NEW FEATURE)"""
+        if not self.test_resume_id:
+            self.log("❌ No resume ID available for job recommendations test", "SKIP")
+            return False, {}
+        
+        success, response, _ = self.run_test(
+            "Get Job Recommendations",
+            "POST",
+            f"/resumes/{self.test_resume_id}/recommendations",
+            200
+        )
+        
+        if success:
+            recommendations = response.get("recommendations", [])
+            if isinstance(recommendations, list) and len(recommendations) > 0:
+                self.log(f"✅ Generated {len(recommendations)} job recommendations")
+                
+                # Validate recommendation structure
+                for i, rec in enumerate(recommendations[:3]):  # Check first 3
+                    required_fields = ["title", "company_type", "match_score", "reason", "salary_range", "skills_matched"]
+                    missing_fields = [field for field in required_fields if field not in rec]
+                    
+                    if not missing_fields:
+                        self.log(f"✅ Recommendation {i+1}: {rec.get('title')} ({rec.get('match_score')}% match)")
+                        self.log(f"   Company Type: {rec.get('company_type')}")
+                        self.log(f"   Salary: {rec.get('salary_range')}")
+                        self.log(f"   Skills Matched: {len(rec.get('skills_matched', []))}")
+                    else:
+                        self.log(f"⚠️  Recommendation {i+1} missing fields: {missing_fields}", "WARN")
+                
+                # Check if recommendations are sorted by match_score
+                scores = [rec.get('match_score', 0) for rec in recommendations if isinstance(rec.get('match_score'), (int, float))]
+                if scores == sorted(scores, reverse=True):
+                    self.log("✅ Recommendations properly sorted by match score")
+                else:
+                    self.log("⚠️  Recommendations may not be sorted by match score", "WARN")
+                    
+            else:
+                self.log("⚠️  No recommendations generated or invalid format", "WARN")
+        
+        return success, response
+
+    def test_public_resume_download_pdf(self):
+        """Test public resume PDF download (NEW FEATURE)"""
+        if not self.test_resume_id:
+            self.log("❌ No resume ID available for public PDF download test", "SKIP")
+            return False, {}
+        
+        # First, share the resume to get share_id
+        success, share_response, _ = self.run_test(
+            "Share Resume for Public Download",
+            "POST",
+            f"/resumes/{self.test_resume_id}/share",
+            200
+        )
+        
+        if not success:
+            self.log("❌ Failed to share resume for public download test", "FAIL")
+            return False, {}
+        
+        share_id = share_response.get("share_id")
+        if not share_id:
+            self.log("❌ No share_id in share response", "FAIL")
+            return False, {}
+        
+        # Test public PDF download
+        url = f"{self.base_url}/public/resume/{share_id}/download-pdf"
+        self.tests_run += 1
+        self.log("Testing Public Resume PDF Download...")
+        
+        try:
+            # Use a new session without authentication for public access
+            import requests
+            response = requests.get(url)
+            success = response.status_code == 200
+            if success:
+                self.tests_passed += 1
+                self.log(f"✅ Public PDF Download - Status: {response.status_code}, Content-Type: {response.headers.get('content-type', 'unknown')}", "PASS")
+                # Check if it's actually PDF content
+                if response.headers.get('content-type') == 'application/pdf':
+                    self.log("✅ Public PDF content type verified", "PASS")
+                    self.log(f"✅ Public PDF size: {len(response.content)} bytes", "PASS")
+                else:
+                    self.log(f"⚠️  Expected PDF content-type, got: {response.headers.get('content-type')}", "WARN")
+            else:
+                self.log(f"❌ Public PDF Download - Expected 200, got {response.status_code}", "FAIL")
+            
+            return success, {"content_type": response.headers.get('content-type'), "size": len(response.content)}
+        except Exception as e:
+            self.log(f"❌ Public PDF Download - Error: {str(e)}", "ERROR")
+            return False, {}
+
     def test_delete_resume(self):
         """Test deleting a resume (run last)"""
         if not self.test_resume_id:
@@ -689,6 +782,10 @@ class ResumeAITester:
             self.test_share_resume,
             self.test_score_resume,
             self.test_google_oauth_endpoint,
+            # NEW JOB RECOMMENDATIONS FEATURE
+            self.test_job_recommendations,
+            # NEW PUBLIC DOWNLOAD FEATURE
+            self.test_public_resume_download_pdf,
             # NEW COVER LETTER FEATURES
             self.test_get_existing_cover_letter,  # Test with existing resume first
             self.test_download_existing_cover_letter_pdf,  # Test PDF download with existing
